@@ -154,8 +154,10 @@ public class PAFlexPageSpec
 			
 			// casting is legitimate as remaining content must be of same type (PAFlexColumn extends PAFlexContainer)
 			PAFlexLayoutResult layoutRes = ((PAFlexContainer) remainingContent).layout(contentWidth, contentHeight);
-			
-			newPage.setContent(layoutRes.getResult());
+
+			PAPhysContainer resObj = layoutRes.getResult();
+			resObj.setHeight(this.height); // otherwise zero
+			newPage.getItems().add(layoutRes.getResult());
 			
 			retVal.add(newPage);
 			

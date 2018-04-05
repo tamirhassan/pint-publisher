@@ -34,6 +34,7 @@ public abstract class PAFlexContainer implements PAFlexObject
 		this.content = content;
 	}
 
+	/*
 	public boolean isMarkWarning() {
 		return markWarning;
 	}
@@ -41,7 +42,8 @@ public abstract class PAFlexContainer implements PAFlexObject
 	public void setMarkWarning(boolean markWarning) {
 		this.markWarning = markWarning;
 	}
-
+	 */
+	
 	public String toString()
 	{
 		return this.getClass().getName() + ": " + textContent();

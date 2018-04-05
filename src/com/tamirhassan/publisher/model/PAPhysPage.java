@@ -13,7 +13,7 @@ public class PAPhysPage //extends PAPhysObject
 //implements PACanvas
 {
 	// these are page specifications
-	PAPhysContainer content;
+	List<PAPhysContainer> items = new ArrayList<PAPhysContainer>();
 	float leftMargin;
 	float rightMargin;
 	float topMargin;
@@ -69,12 +69,12 @@ public class PAPhysPage //extends PAPhysObject
 		this.width = width;
 	}
 
-	public PAPhysContainer getContent() {
-		return content;
+	public List<PAPhysContainer> getItems() {
+		return items;
 	}
 
-	public void setContent(PAPhysContainer content) {
-		this.content = content;
+	public void setItems(List<PAPhysContainer> items) {
+		this.items = items;
 	}
 	
 	public float getLeftMargin() {
@@ -164,7 +164,8 @@ public class PAPhysPage //extends PAPhysObject
 		PDPageContentStream contentStream = new PDPageContentStream(document, page);
 		
 		// now add the page's content to this stream
-		content.render(contentStream, leftMargin, (height - topMargin));
+		for (PAPhysContainer item : items)
+			item.render(contentStream, leftMargin, (height - topMargin));
 		
 		// Make sure that the content stream is closed:
 		contentStream.close();

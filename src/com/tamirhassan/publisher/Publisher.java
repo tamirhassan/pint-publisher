@@ -45,7 +45,6 @@ import java.util.Hashtable;
 import java.util.List;
 import java.util.Locale;
 
-import javax.swing.JFileChooser;
 import javax.swing.filechooser.FileFilter;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -87,7 +86,6 @@ import com.tamirhassan.publisher.model.PAPhysHorizSeq;
 import com.tamirhassan.publisher.model.PAPhysObject;
 import com.tamirhassan.publisher.model.PAPhysPage;
 import com.tamirhassan.publisher.model.PAPhysTextBlock;
-import com.tamirhassan.publisher.model.PAPhysTextLine;
 import com.tamirhassan.publisher.stylesheet.PAStylesheet;
 
 
@@ -126,7 +124,8 @@ public class Publisher
      */
     //protected static Writer output;
     
-    public static final String DIALOG = "-dialog";
+    public static final String EDIT = "-edit";
+//    public static final String DIALOG = "-dialog";
     
     /**
      * Infamous main method.
@@ -140,6 +139,7 @@ public class Publisher
         String inFile = null;
         String outFile = null;
         int currentArgumentIndex = 0;
+        boolean editMode = false;
 
         for( int i=0; i<args.length; i++ )
         {
@@ -168,27 +168,9 @@ public class Publisher
             }
             else */
            
-            if( args[i].equals( DIALOG ))
+            if( args[i].equals( EDIT ))
             {
-            	JFileChooser fcIn = new JFileChooser();
-            	// set up the JFileChoosers
-        		ExampleFileFilter inFilter = new ExampleFileFilter();
-        	    inFilter.addExtension("pdf");
-        	    inFilter.setDescription("Portable Document Format");
-        	    fcIn.addChoosableFileFilter(inFilter);
-//        	    fcIn.setFileFilter(inFilter);
-        	    ExampleFileFilter inFilter2 = new ExampleFileFilter();
-        	    inFilter2.addExtension("png");
-        	    inFilter2.addExtension("tif");
-        	    inFilter2.addExtension("tiff");
-        	    inFilter2.addExtension("jpg");
-        	    inFilter2.addExtension("jpeg");
-        	    inFilter2.setDescription("Scanned Image");
-        	    fcIn.addChoosableFileFilter(inFilter2);
-        	    fcIn.setFileFilter(inFilter);
-        	    
-            	if (fcIn.showOpenDialog(fcIn) == JFileChooser.APPROVE_OPTION)
-            		inFile = fcIn.getSelectedFile().getCanonicalPath();
+            	editMode = true;
             }
             else
             {
@@ -215,100 +197,243 @@ public class Publisher
             outFile = inFile.substring( 0, inFile.length() - 4 ) + ".pdf";
         }
         
-        String flexFile = inFile.substring( 0, inFile.length() - 4 ) + ".flex.xml";
-        String physFile = inFile.substring( 0, inFile.length() - 4 ) + ".phys.xml";
-        
-//		System.err.println("Processing: " + inFile);
-		
-        // load the input file
-        File inputFile = new File(inFile);
-        /*
-        STR_INFILE = inputFile.getCanonicalPath();
-        File tempOutFile = new File(outFile); // tmp for str only
-        if (tempOutFile.getParent() != null)
-        	STR_OUTPUT_PATH = tempOutFile.getParent();
-        */
-//      byte[] inputDoc = getBytesFromFile(inputFile);
-        
-        PDDocument document = new PDDocument();
-        
-        List<PAFlexPageSpec> flexDoc = processInput(inputFile, document, flexFile);
-        
-        // => here the possibility to input
-        
-        // now lay out the document
-        List<PAPhysPage> pages = new ArrayList<PAPhysPage>();
-        for (PAFlexPageSpec pageSpec : flexDoc)
+        if (editMode)
         {
-        	pages.addAll(pageSpec.layout());
-        }
-        
-        // => here the possibility to input
-        
-        // TODO: output the flex document with hashCodes
-        
-        
-        
-        // TODO: output the phys document
-        writePhysDocument(pages, physFile);
-        
-        // TODO: check that conditions are met; otherwise return warnings
-        
-        // now create the PDF
-        //PDDocument document = new PDDocument();
-        int pageIndex = 1;
-		for (PAPhysPage page : pages)
-		{
-			page.render(document);
-			pageIndex ++;
-		}
-		System.out.println("finished render, pageIndex is now: " + pageIndex);
-		
-		// Save the results and ensure that the document is properly closed:
-		document.save( outFile );
-		document.close();
-        
-		/*
-        org.w3c.dom.Document resultDocument = null;
-    	
-        // now output the XML Document by serializing it to output
-        Writer output = null;
-        if( toConsole )
-        {
-            output = new OutputStreamWriter( System.out );
+        	// editing existing file from existing formatted document
+        	// (.flex.xml and .phys.xml files)
+        	// .pdf will be overwritten if present
+        	
+        	// generate input filenames
+        	String flexFilename = inFile + ".flex.xml";
+            String physFilename = inFile + ".phys.xml";
+        	File flexFile = new File(flexFilename);
+        	File physFile = new File(physFilename);
+            
+        	PDDocument document = new PDDocument();
+            List<PAFlexPageSpec> flexDoc = processInput(flexFile, document, null);
+            		
+            List<PAPhysPage> pages = processFormattedDocument(flexDoc, document, physFile);
+            
+            // assume frame order in order written to file (for now)
+            List<PAPhysColumn> frames = obtainFrameOrder(pages);
+            // TODO: content - match up to flex-phys table
+            layoutTextIntoColumns(frames, content)
+            
+         	// output the phys document
+            writePhysDocument(pages, physFile);
+            
+            // TODO: check that conditions are met; otherwise return warnings
+            
+            // now create the PDF
+            //PDDocument document = new PDDocument();
+            int pageIndex = 1;
+    		for (PAPhysPage page : pages)
+    		{
+    			page.render(document);
+    			pageIndex ++;
+    		}
+    		System.out.println("finished render, pageIndex is now: " + pageIndex);
+    		
+    		System.out.println("Saving PDF to: " + outFile);
+    		// Save the results and ensure that the document is properly closed:
+    		document.save( outFile );
+    		document.close();
         }
         else
         {
-            if( encoding != null )
+        	// creating new file
+        	
+        	String flexFilename = inFile.substring( 0, inFile.length() - 4 ) + ".flex.xml";
+            String physFilename = inFile.substring( 0, inFile.length() - 4 ) + ".phys.xml";
+            
+//    		System.err.println("Processing: " + inFile);
+    		
+            // load the input file
+            File inputFile = new File(inFile);
+            File flexFile = new File(flexFilename);
+            File physFile = new File(physFilename);
+            
+            PDDocument document = new PDDocument();
+            
+            List<PAFlexPageSpec> flexDoc = processInput(inputFile, document, flexFile);
+            
+            // now lay out the document
+            List<PAPhysPage> pages = new ArrayList<PAPhysPage>();
+            for (PAFlexPageSpec pageSpec : flexDoc)
             {
-                output = new OutputStreamWriter(
-                    new FileOutputStream( outFile ), encoding );
+            	pages.addAll(pageSpec.layout());
             }
-            else
-            {
-                //use default encoding
-                output = new OutputStreamWriter(
-                    new FileOutputStream( outFile ) );
-            }
-            //System.out.println("using out put file: " + outFile);
+            
+            // output the phys document
+            writePhysDocument(pages, physFile);
+            
+            // TODO: check that conditions are met; otherwise return warnings
+            
+            // now create the PDF
+            //PDDocument document = new PDDocument();
+            int pageIndex = 1;
+    		for (PAPhysPage page : pages)
+    		{
+    			page.render(document);
+    			pageIndex ++;
+    		}
+    		System.out.println("finished render, pageIndex is now: " + pageIndex);
+    		
+    		// Save the results and ensure that the document is properly closed:
+    		document.save( outFile );
+    		document.close();
+            
         }
-        */
-		
-        //System.out.println("resultDocument: " + resultDocument);
         
-//        temporarily disabled
-//        serializeXML(resultDocument, output);
-        
-		/*
-        if( output != null )
-        {
-            output.close();
-        }
-        */
     }
     
+    protected static List<PAPhysColumn> recObtainFrameOrder(PAPhysContainer c)
+    {
+    	List<PAPhysColumn> retVal = new ArrayList<PAPhysColumn>();
+    	
+    	if (c instanceof PAPhysColumn)
+    	{
+    		PAPhysColumn col = (PAPhysColumn)c;
+    		retVal.add(col);
+    		for (PAPhysObject o : col.getItems())
+    		{
+    			if (o instanceof PAPhysContainer)
+    				retVal.addAll(recObtainFrameOrder((PAPhysContainer)o));
+    		}
+    	}
+    	else if (c instanceof PAPhysHorizSeq)
+    	{
+    		PAPhysHorizSeq hs = (PAPhysHorizSeq)c;
+    		for (PAPhysObject o : hs.getItems())
+    		{
+    			if (o instanceof PAPhysContainer)
+    				retVal.addAll(recObtainFrameOrder((PAPhysContainer)o));
+    		}
+    	}
+    	
+    	return retVal;
+    }
+    
+    protected static List<PAPhysColumn> obtainFrameOrder(List<PAPhysPage> pages)
+    {
+    	List<PAPhysColumn> retVal = new ArrayList<PAPhysColumn>();
+    	
+    	for (PAPhysPage page : pages)
+    	{
+    		for (PAPhysContainer c : page.getItems())
+    			retVal.addAll(recObtainFrameOrder(c));
+    	}
+    	return retVal;
+    }
+    
+    protected static void layoutTextIntoColumns(List<PAPhysColumn> cols, List<PAFlexObject> content)
+    {
+    	
+    }
+    
+    protected static void recProcessFormattedDocument(PDDocument doc, Element el, 
+    		List itemList)
+    {
+    	NodeList nl = el.getChildNodes();
+    	
+    	for (int i = 0; i < nl.getLength(); i ++) 
+        {
+    		if (nl.item(i) instanceof Element)
+    		{
+    			Element childEl = (Element) nl.item(i);
+        		
+        		if (childEl.getTagName().equals("phys-col"))
+        		{
+        			PAPhysColumn newObj = new PAPhysColumn();
+    				
+    				newObj.setWidth(Float.parseFloat(childEl.getAttribute("width")));
+        			newObj.setHeight(Float.parseFloat(childEl.getAttribute("height")));
+        			
+        			recProcessFormattedDocument(doc, childEl, newObj.getItems());
+        			itemList.add(newObj);
+        		}
+        		else if (childEl.getTagName().equals("horiz-seq"))
+        		{
+        			PAPhysHorizSeq newObj = new PAPhysHorizSeq();
+    				
+    				newObj.setWidth(Float.parseFloat(childEl.getAttribute("width")));
+        			newObj.setHeight(Float.parseFloat(childEl.getAttribute("height")));
+        			
+        			recProcessFormattedDocument(doc, childEl, newObj.getItems());
+        			itemList.add(newObj);
+        		}
+        		else if (childEl.getTagName().equals("text-block"))
+        		{
+        			// do nothing for now
+        		}
+        		else if (childEl.getTagName().equals("graphic"))
+        		{
+        			// do nothing for now
+    			}
+    			else if (childEl.getTagName().equals("kp-glue"))
+    			{
+    				// do nothing for now
+    			}
+    			
+    		}
+    		
+        }
+    }
+    
+    public static List<PAPhysPage> processFormattedDocument(List<PAFlexPageSpec> flexDoc, 
+    		PDDocument pdDoc, File physFile)
+    {
+    	List<PAPhysPage> retVal = new ArrayList<PAPhysPage>();
+    	
+    	try
+    	{
+    		DocumentBuilderFactory documentBuilderFactory = DocumentBuilderFactory
+	    	        .newInstance();
+	    	DocumentBuilder documentBuilder = documentBuilderFactory.newDocumentBuilder();
+	    	Document document = documentBuilder.parse(physFile);
+	    	
+	    	Element docEl = (Element) document.getElementsByTagName("phys-doc").item(0);
+	    	
+	    	NodeList nl = document.getElementsByTagName("page");
+	    	
+	    	for (int i = 0; i < nl.getLength(); i ++) 
+            {
+	    		Element pageEl = (Element) nl.item(i);
+	    		float height = Float.parseFloat(pageEl.getAttribute("height"));
+	    		float width = Float.parseFloat(pageEl.getAttribute("width"));
+	    		float leftMargin = Float.parseFloat(pageEl.getAttribute("left-margin"));
+	    		float rightMargin = Float.parseFloat(pageEl.getAttribute("right-margin"));
+	    		float topMargin = Float.parseFloat(pageEl.getAttribute("top-margin"));
+	    		float bottomMargin = Float.parseFloat(pageEl.getAttribute("bottom-margin"));
+	    		
+	    		PAPhysPage page = new PAPhysPage(width, height, leftMargin, rightMargin, 
+	    				topMargin, bottomMargin);
+	    		retVal.add(page);
+	    		
+	    		// TODO: Sort out type issues!
+	    		recProcessFormattedDocument(pdDoc, pageEl, page.getItems());
+	    		
+            }
+    		
+    	}
+    	catch(Exception e)
+    	{
+    		e.printStackTrace();
+    	}
+    	
+    	return retVal;
+    }
+    
+    
     // TODO: change to PAFlexDocument - list of PAPageSpecs
-    public static List<PAFlexPageSpec> processInput(File inputFile, PDDocument doc, String outFile)
+    /**
+     * 
+     * @param inputFile
+     * @param doc - new PDDocument, for processing stylesheet
+     * @param outFile - the file with added flexIDs (if not null)
+     * @return
+     */
+    public static List<PAFlexPageSpec> processInput(File inputFile, PDDocument doc, File outFile)
     {
     	List<PAFlexPageSpec> retVal = new ArrayList<PAFlexPageSpec>();
     	
@@ -464,18 +589,21 @@ public class Publisher
 	            // add the one page spec to result
 				retVal.add(pageSpec);
 				
-				// write the content into xml file
-				TransformerFactory transformerFactory = TransformerFactory.newInstance();
-				Transformer transformer = transformerFactory.newTransformer();
-				DOMSource source = new DOMSource(document);
-				StreamResult result = new StreamResult(new File(outFile));
-
-				// Output to console for testing
-				// StreamResult result = new StreamResult(System.out);
-
-				transformer.transform(source, result);
-
-				System.out.println("File saved!");
+				if (outFile != null)
+				{
+					// write the content into xml file
+					TransformerFactory transformerFactory = TransformerFactory.newInstance();
+					Transformer transformer = transformerFactory.newTransformer();
+					DOMSource source = new DOMSource(document);
+					StreamResult result = new StreamResult(outFile);
+	
+					// Output to console for testing
+					// StreamResult result = new StreamResult(System.out);
+	
+					transformer.transform(source, result);
+	
+					System.out.println("File saved!");
+				}
             }
     	}
     	catch (Exception e)
@@ -487,7 +615,7 @@ public class Publisher
     }
     
     
-    protected static NodeList writePhysDocument(List<PAPhysPage> physDoc, String filename)
+    protected static NodeList writePhysDocument(List<PAPhysPage> physDoc, File outFile)
     {
     // based on http://www.mkyong.com/java/how-to-create-xml-file-in-java-dom/
     	
@@ -512,14 +640,24 @@ public class Publisher
     			pageElement.setAttribute("top-margin", String.valueOf(ps.getTopMargin()));
     			pageElement.setAttribute("bottom-margin", String.valueOf(ps.getBottomMargin()));
     			
-    			PAPhysColumn pageCol = (PAPhysColumn) ps.getContent();
+//    			PAPhysColumn pageCol = (PAPhysColumn) ps.getItems();
     			
-    			recWritePhysDocument(doc, pageElement, pageCol);
+    			// do not write page column as extra tag - just confuses matters
+    			//recWritePhysDocument(doc, pageElement, pageCol);
+    			
+    			/*
+    			for (PAPhysObject cc : ((PAPhysColumn) pageCol).getItems())
+        			recWritePhysDocument(doc, pageElement, cc); 
+    			*/
+    			
+    			for (PAPhysObject cc : ps.getItems())
+        			recWritePhysDocument(doc, pageElement, cc); 
+    			
     			rootElement.appendChild(pageElement);
     		}
     		
     		// write the content into xml file
-    		System.out.println("Writing phys file: " + filename);
+    		System.out.println("Writing phys file: " + outFile.getPath());
     		TransformerFactory transformerFactory = TransformerFactory.newInstance();
     		Transformer transformer = transformerFactory.newTransformer();
     		
@@ -528,7 +666,7 @@ public class Publisher
     		transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
     		
     		DOMSource source = new DOMSource(doc);
-    		StreamResult result = new StreamResult(new File(filename));
+    		StreamResult result = new StreamResult(outFile);
     		
     		// Output to console for testing
 			// StreamResult result = new StreamResult(System.out);

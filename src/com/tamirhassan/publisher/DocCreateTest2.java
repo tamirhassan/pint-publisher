@@ -269,7 +269,7 @@ public class DocCreateTest2
 				
 				
 				PAPhysPage physPage = (PAPhysPage)layout.getItems().get(0);
-				PAPhysColumn physCol = (PAPhysColumn)physPage.getContent();
+				PAPhysColumn physCol = (PAPhysColumn)physPage.getItems();
 				PAPhysTextBlock tb = (PAPhysTextBlock)physCol.getItems().get(0);
 				List<PAPhysTextLine> lines = tb.getItems();
 				

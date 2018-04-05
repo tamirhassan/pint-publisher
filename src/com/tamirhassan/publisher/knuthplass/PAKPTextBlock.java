@@ -605,6 +605,7 @@ public class PAKPTextBlock extends PAFlexBreakableObject
 			laidOutLines = generateLineObjects(fitLines, width);
 						
 			PAPhysTextBlock result = new PAPhysTextBlock();
+			result.setWidth(width);
 			result.setFlexID(id);
 			result.setItems(laidOutLines);
 			
@@ -617,6 +618,8 @@ public class PAKPTextBlock extends PAFlexBreakableObject
 				
 				// generate partial result block
 				result = new PAPhysTextBlock();
+				result.setWidth(width);
+				result.setFlexID(id);
 //				List<PAPhysTextLine> remainingContent = new ArrayList<PAPhysTextLine>();
 				
 				while (result.contentHeight(true) 

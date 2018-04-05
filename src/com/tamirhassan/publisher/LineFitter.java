@@ -356,7 +356,7 @@ public class LineFitter
 		
 		Font helvFont = logPar.getFont().getawtFont();
 		*/
-		factory.add_text( logPar.getContent(), attributes, generator );
+		factory.add_text( logPar.getItems(), attributes, generator );
 		Paragraph lfPara = factory.make_paragraph();
 		
 //		System.out.println("in factory: added text: " + logPar.getContent());

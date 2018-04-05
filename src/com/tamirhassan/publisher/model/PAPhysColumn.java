@@ -237,6 +237,28 @@ public class PAPhysColumn extends PAPhysContainer //implements PARenderable
 //		System.out.println("content height: " + contentHeight());
 	}
 	
+	/**
+	 * Used for adding text to (empty) physical column
+	 * 
+	 * @param content
+	 * @return new PAFlexLayoutResult containing new column with same dimensions
+	 */
+	public PAFlexLayoutResult layoutColumn(List<PAFlexObject> content)
+	{
+		PAFlexColumn flexCol = new PAFlexColumn(content);
+		PAFlexLayoutResult intermRes = flexCol.layout(width, height);
+		
+		// if successful, set dimensions of new frame
+		if (intermRes.exitStatus == PAFlexLayoutResult.ESTAT_SUCCESS ||
+				intermRes.exitStatus == PAFlexLayoutResult.ESTAT_PARTIAL_SUCCESS)
+		{
+			intermRes.getResult().width = this.width;
+			intermRes.getResult().height = this.height;
+		}
+		
+		return intermRes;
+	}
+	
 	// deprecated
 	/*
 	public void renderLinesDirectly(PDPageContentStream contentStream, 
