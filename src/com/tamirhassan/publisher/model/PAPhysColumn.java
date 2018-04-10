@@ -222,7 +222,8 @@ public class PAPhysColumn extends PAPhysContainer //implements PARenderable
 			if (o instanceof PAPhysContainer) // was: PARenderable
 			{
 				((PAPhysContainer)o).render(contentStream, x1, y2);
-				y2 -= ((PAPhysContainer)o).contentHeight();
+				//y2 -= ((PAPhysContainer)o).contentHeight();
+				y2 -= ((PAPhysContainer)o).getHeight();
 				
 				System.out.println("  " + hashCode() + " with contentHeight: " + ((PAPhysContainer)o).contentHeight());
 			}
@@ -246,7 +247,8 @@ public class PAPhysColumn extends PAPhysContainer //implements PARenderable
 	public PAFlexLayoutResult layoutColumn(List<PAFlexObject> content)
 	{
 		PAFlexColumn flexCol = new PAFlexColumn(content);
-		PAFlexLayoutResult intermRes = flexCol.layout(width, height);
+		
+		PAFlexLayoutResult intermRes = flexCol.layoutObject(width, height);
 		
 		// if successful, set dimensions of new frame
 		if (intermRes.exitStatus == PAFlexLayoutResult.ESTAT_SUCCESS ||
@@ -254,6 +256,8 @@ public class PAPhysColumn extends PAPhysContainer //implements PARenderable
 		{
 			intermRes.getResult().width = this.width;
 			intermRes.getResult().height = this.height;
+			
+			// note: found floats get also passed to intermRes
 		}
 		
 		return intermRes;

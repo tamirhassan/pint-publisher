@@ -156,7 +156,7 @@ public class PAFlexPageSpec
 			PAFlexLayoutResult layoutRes = ((PAFlexContainer) remainingContent).layout(contentWidth, contentHeight);
 
 			PAPhysContainer resObj = layoutRes.getResult();
-			resObj.setHeight(this.height); // otherwise zero
+//			resObj.setHeight(this.height); // otherwise zero - now done in calling method
 			newPage.getItems().add(layoutRes.getResult());
 			
 			retVal.add(newPage);

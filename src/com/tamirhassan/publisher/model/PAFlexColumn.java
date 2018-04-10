@@ -130,6 +130,7 @@ public class PAFlexColumn extends PAFlexContainer
 		PAPhysColumn result = new PAPhysColumn();
 		result.setFlexID(id);
 		result.width = width;
+		result.height = height;
 		//result.height = 0;
 		PAFlexColumn remainingContent = new PAFlexColumn();
 		remainingContent.setID(id);

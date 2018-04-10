@@ -71,8 +71,11 @@ import at.ac.tuwien.dbai.pdfwrap.exceptions.DocumentProcessingException;
 import com.tamirhassan.publisher.knuthplass.KPGlue;
 import com.tamirhassan.publisher.knuthplass.KPPenalty;
 import com.tamirhassan.publisher.model.PAFlexColumn;
+import com.tamirhassan.publisher.model.PAFlexContainer;
 import com.tamirhassan.publisher.model.PAFlexFigure;
+import com.tamirhassan.publisher.model.PAFlexFloat;
 import com.tamirhassan.publisher.model.PAFlexFormattedParagraph;
+import com.tamirhassan.publisher.model.PAFlexLayoutResult;
 import com.tamirhassan.publisher.model.PAFlexMultiCol;
 import com.tamirhassan.publisher.model.PAFlexObject;
 import com.tamirhassan.publisher.model.PAFlexPageSpec;
@@ -199,6 +202,7 @@ public class Publisher
         
         if (editMode)
         {
+        	System.out.println("in edit mode");
         	// editing existing file from existing formatted document
         	// (.flex.xml and .phys.xml files)
         	// .pdf will be overwritten if present
@@ -216,8 +220,11 @@ public class Publisher
             
             // assume frame order in order written to file (for now)
             List<PAPhysColumn> frames = obtainFrameOrder(pages);
+            // assume content object order in order written to file (for now)
+            List<PAFlexObject> content = obtainContentSequence(flexDoc);
+            
             // TODO: content - match up to flex-phys table
-            layoutTextIntoColumns(frames, content)
+            layoutTextIntoColumns(frames, content);
             
          	// output the phys document
             writePhysDocument(pages, physFile);
@@ -287,12 +294,67 @@ public class Publisher
         
     }
     
+    protected static List<PAFlexObject> recObtainContentSequence(PAFlexContainer c)
+    {
+    	List<PAFlexObject> retVal = new ArrayList<PAFlexObject>();
+    	
+    	for (PAFlexObject o : c.getContent())
+    	{
+    		if (o instanceof PAFlexColumn || o instanceof PAFlexMultiCol)
+    		{
+    			// recurse 
+    			retVal.addAll(recObtainContentSequence((PAFlexContainer)o));
+    		}
+    		else
+    		{
+    			// Paragraph (not a PAFlexContainer), Figure (a container), Graphic (phys), etc. 
+    			// TODO: sort out object model
+    			retVal.add(o); 
+    		}
+    	}
+    	
+    	return retVal;
+    }
+    
+    protected static List<PAFlexObject> obtainContentSequence(List<PAFlexPageSpec> flexDoc)
+    {
+    	List<PAFlexObject> retVal = new ArrayList<PAFlexObject>();
+    	
+    	for (PAFlexPageSpec ps : flexDoc)
+    	{
+    		// content is a single PAFlexColumn
+    		retVal.addAll(recObtainContentSequence(ps.getContent())); 
+    	}
+    	
+    	return retVal;
+    }
+    
     protected static List<PAPhysColumn> recObtainFrameOrder(PAPhysContainer c)
     {
     	List<PAPhysColumn> retVal = new ArrayList<PAPhysColumn>();
     	
     	if (c instanceof PAPhysColumn)
     	{
+    		// new alg
+    		// if it has a flexID, add it
+    		// otherwise recurse
+    		
+    		PAPhysColumn col = (PAPhysColumn)c;
+    		
+    		if (c.getFlexID() > 0)
+    		{
+    			retVal.add(col);
+    		}
+    		else
+    		{
+    			for (PAPhysObject o : col.getItems())
+        		{
+    				if (o instanceof PAPhysContainer)
+    					retVal.addAll(recObtainFrameOrder((PAPhysContainer)o));
+        		}
+    		}
+    		
+    		/*
     		PAPhysColumn col = (PAPhysColumn)c;
     		retVal.add(col);
     		for (PAPhysObject o : col.getItems())
@@ -300,15 +362,28 @@ public class Publisher
     			if (o instanceof PAPhysContainer)
     				retVal.addAll(recObtainFrameOrder((PAPhysContainer)o));
     		}
+    		*/
     	}
     	else if (c instanceof PAPhysHorizSeq)
     	{
+    		// new alg
+    		// always recurse
+    		
     		PAPhysHorizSeq hs = (PAPhysHorizSeq)c;
     		for (PAPhysObject o : hs.getItems())
     		{
     			if (o instanceof PAPhysContainer)
     				retVal.addAll(recObtainFrameOrder((PAPhysContainer)o));
     		}
+    		
+    		/*
+    		PAPhysHorizSeq hs = (PAPhysHorizSeq)c;
+    		for (PAPhysObject o : hs.getItems())
+    		{
+    			if (o instanceof PAPhysContainer)
+    				retVal.addAll(recObtainFrameOrder((PAPhysContainer)o));
+    		}
+    		*/
     	}
     	
     	return retVal;
@@ -328,7 +403,49 @@ public class Publisher
     
     protected static void layoutTextIntoColumns(List<PAPhysColumn> cols, List<PAFlexObject> content)
     {
+    	List<PAPhysColumn> unusedFrames = new ArrayList<PAPhysColumn>();
+    	for (PAPhysColumn c : cols)
+    		unusedFrames.add(c);
     	
+    	List<PAFlexObject> remainingContent = new ArrayList<PAFlexObject>();
+    	for (PAFlexObject o : content)
+    		remainingContent.add(o);
+    	
+    	List<PAFlexFloat> floats = new ArrayList<PAFlexFloat>();
+    	
+    	while(unusedFrames.size() > 0 && remainingContent.size() > 0)
+    	{
+    		PAPhysColumn col = unusedFrames.remove(0);
+    		
+    		// this method creates a FlexColumn and lays it out anew
+    		PAFlexLayoutResult res = col.layoutColumn(remainingContent);
+    		
+    		if (res.getExitStatus() == PAFlexLayoutResult.ESTAT_SUCCESS ||
+    				res.getExitStatus() == PAFlexLayoutResult.ESTAT_PARTIAL_SUCCESS)
+    		{
+    			PAPhysColumn resultCol = (PAPhysColumn)res.getResult();
+    			col.setItems(resultCol.getItems());
+    			col.setHeight(resultCol.getHeight());
+    			col.setWidth(resultCol.getWidth());
+    			col.setDemerits(resultCol.getDemerits());
+    			
+    			floats.addAll(res.getFloats());
+    			
+    			// reobtains the items
+    			if (res.getExitStatus() == PAFlexLayoutResult.ESTAT_PARTIAL_SUCCESS)
+    				remainingContent = ((PAFlexColumn)res.getRemainingContent()).getContent();
+    			else
+    				remainingContent.clear();
+    		}
+    	}
+    	
+    	if (unusedFrames.size() > 0)
+    		System.out.println("more frames than required for content; should be removed");
+    	
+    	if (unusedFrames.size() > 0)
+    		System.out.println("content truncated; more frames need to be added according to rules");
+    	
+    	// TODO: check and lay out floats!
     }
     
     protected static void recProcessFormattedDocument(PDDocument doc, Element el, 
@@ -349,12 +466,20 @@ public class Publisher
     				newObj.setWidth(Float.parseFloat(childEl.getAttribute("width")));
         			newObj.setHeight(Float.parseFloat(childEl.getAttribute("height")));
         			
+        			if (childEl.hasAttribute("flex-id"))
+        			{
+        				newObj.setFlexID(Integer.parseInt(childEl.getAttribute("flex-id")));
+        			}
+        			
         			recProcessFormattedDocument(doc, childEl, newObj.getItems());
         			itemList.add(newObj);
         		}
         		else if (childEl.getTagName().equals("horiz-seq"))
         		{
         			PAPhysHorizSeq newObj = new PAPhysHorizSeq();
+        			
+        			if (childEl.hasAttribute("flex-id"))
+        				newObj.setFlexID(Integer.parseInt(childEl.getAttribute("flex-id")));
     				
     				newObj.setWidth(Float.parseFloat(childEl.getAttribute("width")));
         			newObj.setHeight(Float.parseFloat(childEl.getAttribute("height")));
@@ -406,8 +531,14 @@ public class Publisher
 	    		float topMargin = Float.parseFloat(pageEl.getAttribute("top-margin"));
 	    		float bottomMargin = Float.parseFloat(pageEl.getAttribute("bottom-margin"));
 	    		
+	    		
+	    		
 	    		PAPhysPage page = new PAPhysPage(width, height, leftMargin, rightMargin, 
 	    				topMargin, bottomMargin);
+	    		
+	    		if (pageEl.hasAttribute("flex-id"))
+    				page.setFlexID(Integer.parseInt(pageEl.getAttribute("flex-id")));
+	    		
 	    		retVal.add(page);
 	    		
 	    		// TODO: Sort out type issues!
@@ -633,7 +764,7 @@ public class Publisher
     		{
     			Element pageElement = doc.createElement("page");
     			// set coords, etc.
-    			pageElement.setAttribute("width", String.valueOf(ps.getHeight()));
+    			pageElement.setAttribute("width", String.valueOf(ps.getWidth()));
     			pageElement.setAttribute("height", String.valueOf(ps.getHeight()));
     			pageElement.setAttribute("left-margin", String.valueOf(ps.getLeftMargin()));
     			pageElement.setAttribute("right-margin", String.valueOf(ps.getRightMargin()));
@@ -714,7 +845,10 @@ public class Publisher
         	}
         	else if (c instanceof PAPhysTextBlock)
         	{
-        		childEl = doc.createElement("text-block");    		
+        		childEl = doc.createElement("text-block");    
+        		PAPhysTextBlock tb = (PAPhysTextBlock)c;
+        		
+        		childEl.setTextContent(tb.toString());
         	}
         	else if (c instanceof PAPhysGraphic)
         	{
