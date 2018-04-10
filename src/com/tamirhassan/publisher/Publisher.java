@@ -220,11 +220,21 @@ public class Publisher
             
             // assume frame order in order written to file (for now)
             List<PAPhysColumn> frames = obtainFrameOrder(pages);
+            
+            List<PAPhysColumn> contentFrames = new ArrayList<PAPhysColumn>();
+            List<PAPhysColumn> floatFrames = new ArrayList<PAPhysColumn>();
+            
+            for (PAPhysColumn frame : frames)
+            	if (frame.getFlexID() > 0)
+            		contentFrames.add(frame);
+            	else // can only be = -1
+            		floatFrames.add(frame);
+            
             // assume content object order in order written to file (for now)
             List<PAFlexObject> content = obtainContentSequence(flexDoc);
             
             // TODO: content - match up to flex-phys table
-            layoutTextIntoColumns(frames, content);
+            layoutTextIntoColumns(contentFrames, floatFrames, content);
             
          	// output the phys document
             writePhysDocument(pages, physFile);
@@ -341,7 +351,7 @@ public class Publisher
     		
     		PAPhysColumn col = (PAPhysColumn)c;
     		
-    		if (c.getFlexID() > 0)
+    		if (c.getFlexID() > 0 || c.getFlexID() == -1)
     		{
     			retVal.add(col);
     		}
@@ -401,11 +411,12 @@ public class Publisher
     	return retVal;
     }
     
-    protected static void layoutTextIntoColumns(List<PAPhysColumn> cols, List<PAFlexObject> content)
+    protected static void layoutTextIntoColumns(List<PAPhysColumn> contentFrames, 
+    		List<PAPhysColumn> floatFrames, List<PAFlexObject> content)
     {
-    	List<PAPhysColumn> unusedFrames = new ArrayList<PAPhysColumn>();
-    	for (PAPhysColumn c : cols)
-    		unusedFrames.add(c);
+    	List<PAPhysColumn> unusedContentFrames = new ArrayList<PAPhysColumn>();
+    	for (PAPhysColumn c : contentFrames)
+    		unusedContentFrames.add(c);
     	
     	List<PAFlexObject> remainingContent = new ArrayList<PAFlexObject>();
     	for (PAFlexObject o : content)
@@ -413,9 +424,9 @@ public class Publisher
     	
     	List<PAFlexFloat> floats = new ArrayList<PAFlexFloat>();
     	
-    	while(unusedFrames.size() > 0 && remainingContent.size() > 0)
+    	while(unusedContentFrames.size() > 0 && remainingContent.size() > 0)
     	{
-    		PAPhysColumn col = unusedFrames.remove(0);
+    		PAPhysColumn col = unusedContentFrames.remove(0);
     		
     		// this method creates a FlexColumn and lays it out anew
     		PAFlexLayoutResult res = col.layoutColumn(remainingContent);
@@ -439,13 +450,51 @@ public class Publisher
     		}
     	}
     	
-    	if (unusedFrames.size() > 0)
+    	if (unusedContentFrames.size() > 0)
     		System.out.println("more frames than required for content; should be removed");
     	
-    	if (unusedFrames.size() > 0)
+    	if (remainingContent.size() > 0)
     		System.out.println("content truncated; more frames need to be added according to rules");
     	
-    	// TODO: check and lay out floats!
+    	// check and lay out floats!
+    	// TODO: deal with float edits (change height of dock)!
+    	
+    	List<PAPhysColumn> unusedFloatFrames = new ArrayList<PAPhysColumn>();
+    	for (PAPhysColumn c : floatFrames)
+    		unusedFloatFrames.add(c);
+    	
+    	while(unusedFloatFrames.size() > 0 && floats.size() > 0)
+    	{
+    		PAPhysColumn frame = unusedFloatFrames.remove(0);
+    		
+    		PAFlexFloat ffloat = floats.remove(0);
+    		
+    		PAFlexLayoutResult res = frame.layoutColumn(ffloat.getContent());
+    		
+    		if (res.getExitStatus() == PAFlexLayoutResult.ESTAT_SUCCESS ||
+    				res.getExitStatus() == PAFlexLayoutResult.ESTAT_PARTIAL_SUCCESS)
+    		{
+    			PAPhysColumn resultCol = (PAPhysColumn)res.getResult();
+    			frame.setItems(resultCol.getItems());
+    			frame.setHeight(resultCol.getHeight());
+    			frame.setWidth(resultCol.getWidth());
+    			frame.setDemerits(resultCol.getDemerits());
+    		}
+    		else
+    		{
+    			System.out.println("Float did not fit into space");
+    		}
+    		if (res.getExitStatus() == PAFlexLayoutResult.ESTAT_PARTIAL_SUCCESS)
+    		{
+    			System.out.println("Float did not fit completely into space");
+    		}
+    	}
+    	
+    	if (unusedFloatFrames.size() > 0)
+    		System.out.println("more frames than required for floats; should be removed");
+    	
+    	if (floats.size() > 0)
+    		System.out.println("floats truncated; more frames need to be added according to rules");
     }
     
     protected static void recProcessFormattedDocument(PDDocument doc, Element el, 

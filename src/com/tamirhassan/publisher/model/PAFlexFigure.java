@@ -43,6 +43,7 @@ public class PAFlexFigure extends PAFlexFloat
 			innerCol.items.add(new KPGlue(8));
 //			innerCol.markWarning = true;
 			innerCol.height = innerCol.contentHeight();
+			innerCol.setFlexID(-1); // for the time being - TODO: change to figure ID
 			
 			PAPhysColumn outerCol = new PAPhysColumn();
 			outerCol.width = width;
