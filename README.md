@@ -38,6 +38,7 @@ This will combine the new annotated content file with the existing layout and ty
 
 ## Roadmap
 
+* Generation of hybrid, editable PDFs
 * Balanced columns
 * Baseline grid
 * Handling of exceptions to deal with layout errors
