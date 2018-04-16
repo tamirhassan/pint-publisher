@@ -5,6 +5,8 @@ import com.tamirhassan.publisher.knuthplass.KPGlue;
 public class PAFlexFigure extends PAFlexFloat
 {
 
+	// TODO: currently content is being inherited, but is unused
+	
 	PAPhysGraphic graphic;
 	PAFlexFormattedParagraph caption;
 	
@@ -43,7 +45,7 @@ public class PAFlexFigure extends PAFlexFloat
 			innerCol.items.add(new KPGlue(8));
 //			innerCol.markWarning = true;
 			innerCol.height = innerCol.contentHeight();
-			innerCol.setFlexID(-1); // for the time being - TODO: change to figure ID
+			innerCol.setFlexID(id); // for the time being - TODO: change to figure ID
 			
 			PAPhysColumn outerCol = new PAPhysColumn();
 			outerCol.width = width;
@@ -51,17 +53,17 @@ public class PAFlexFigure extends PAFlexFloat
 			outerCol.items.add(innerCol);
 			outerCol.items.add(new KPGlue(8)); //TODO: hack
 			outerCol.height = outerCol.contentHeight();
-			outerCol.setFlexID(id);
+			outerCol.setFlexID(-1);
 			
 			// TODO: check height?
-			if (outerCol.contentHeight() < height)
+			if (outerCol.contentHeight() <= height)
 			{
-				return new PAFlexLayoutResult(innerCol, -1, null, 
+				return new PAFlexLayoutResult(outerCol, -1, null, 
 						PAFlexLayoutResult.ESTAT_SUCCESS);
 			}
 			else
 			{
-				return new PAFlexLayoutResult(innerCol, -1, null, 
+				return new PAFlexLayoutResult(outerCol, -1, null, 
 						PAFlexLayoutResult.ESTAT_FAIL_INSUFFICIENT_HEIGHT);
 			}
 		}

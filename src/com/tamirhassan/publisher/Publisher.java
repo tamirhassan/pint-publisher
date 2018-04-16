@@ -469,7 +469,10 @@ public class Publisher
     		
     		PAFlexFloat ffloat = floats.remove(0);
     		
-    		PAFlexLayoutResult res = frame.layoutColumn(ffloat.getContent());
+//    		this does not work - "content" is unused in figures
+//    		PAFlexLayoutResult res = frame.layoutColumn(ffloat.getContent());
+    		PAFlexLayoutResult res = ffloat.layout(frame.getWidth(), frame.getHeight());
+    		
     		
     		if (res.getExitStatus() == PAFlexLayoutResult.ESTAT_SUCCESS ||
     				res.getExitStatus() == PAFlexLayoutResult.ESTAT_PARTIAL_SUCCESS)
