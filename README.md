@@ -26,3 +26,25 @@ $ java com.tamirhassan.publisher.Publisher -edit sample-article
 ```
 
 This will combine the new annotated content file with the existing layout and typeset the content into the existing frames, where possible.
+
+## Features
+
+* Knuth-Plass linebreaking
+* Inclusion of bitmap graphics
+* Basic figure placement
+* Multiple-column text
+* X-Y decomposable layouts
+* Support for OpenType CFF fonts (but no kerning at the moment)
+
+## Roadmap
+
+* Balanced columns
+* Baseline grid
+* Handling of exceptions to deal with layout errors
+* Use of alternative fonts where glyphs/symbols are missing
+* Placement of new frames in edit mode
+* Indentations
+* Inclusion of vector graphics (and appropriate format conversion)
+* Paragraph alignments other than justified
+* Ruling lines
+* Tables
