@@ -7,7 +7,7 @@ Pint (= "Pint Is Not TeX") is a formatting tool designed to showcase the followi
 
 It can also be used to simply create PDFs from XML or directly from Java code.
 
-The tool is currently at a very early stage of development. Compiling requires PDFBox 2.0.8. More documentation will come soon.
+The tool is currently at a very early stage of development. Compiling requires PDFBox 2.0.8. If you have any questions or would like to contribute at this stage, it's best to send me an email. More documentation and a build will come soon.
 
 A sample file is included: 
 
