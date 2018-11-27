@@ -24,4 +24,10 @@ public abstract class PAPhysGraphic extends PAPhysContainer
 	{
 		return height;
 	}
+	
+	@Override
+	public String tagName()
+	{
+		return "graphic";
+	}
 }

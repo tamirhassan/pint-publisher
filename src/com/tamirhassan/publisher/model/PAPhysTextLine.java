@@ -155,18 +155,62 @@ public class PAPhysTextLine //extends PAPhysContainer // implements KPBox
 	 * in 1/1000ths of fontsize
 	 * TODO: check whether to use int or float
 	 */
-	public float contentWidth(boolean withSpacing)
+	public float contentWidth()
 	{
 		// TODO: implement for TT
 		// e.g. retVal += font.getFontWidth(32);
 		
 		float retVal = 0;
 
-		for (PAPhysObject item : items)
+		// first duplicate list
+		List<PAPhysObject> itemsDup = new ArrayList<PAPhysObject>();
+		itemsDup.addAll(items);
+		
+		// remove glue at start
+		while (itemsDup.size() > 0 && itemsDup.get(0) instanceof KPGlue)
+			itemsDup.remove(0);
+		
+		// remove glue at end
+		while (itemsDup.size() > 0 && itemsDup.get(itemsDup.size() - 1) instanceof KPGlue)
+			itemsDup.remove(itemsDup.size() - 1);
+		
+		for (PAPhysObject item : itemsDup)
 			if (item instanceof KPBox)
 				retVal += ((KPBox)item).getAmount(); //getWidth();
-			else if (withSpacing && item instanceof KPGlue)
+			else if (item instanceof KPGlue)
 				retVal += ((KPGlue)item).spaceAmount();
+		
+		return retVal;
+	}
+	
+	/*
+	 * in 1/1000ths of fontsize
+	 * TODO: check whether to use int or float
+	 */
+	public float contentWidthNoAdjRatio()
+	{
+		// TODO: implement for TT
+		// e.g. retVal += font.getFontWidth(32);
+		
+		float retVal = 0;
+
+		// first duplicate list
+		List<PAPhysObject> itemsDup = new ArrayList<PAPhysObject>();
+		itemsDup.addAll(items);
+		
+		// remove glue at start
+		while (itemsDup.size() > 0 && itemsDup.get(0) instanceof KPGlue)
+			itemsDup.remove(0);
+		
+		// remove glue at end
+		while (itemsDup.size() > 0 && itemsDup.get(itemsDup.size() - 1) instanceof KPGlue)
+			itemsDup.remove(itemsDup.size() - 1);
+		
+		for (PAPhysObject item : itemsDup)
+			if (item instanceof KPBox)
+				retVal += ((KPBox)item).getAmount(); //getWidth();
+			else if (item instanceof KPGlue)
+				retVal += ((KPGlue)item).getAmount();
 		
 		return retVal;
 	}
@@ -201,6 +245,39 @@ public class PAPhysTextLine //extends PAPhysContainer // implements KPBox
 				retVal += (((KPGlue)item).getAmount() * ((KPGlue)item).getStretchability());
 		
 		return retVal;
+	}
+	
+	public float indentAmount()
+	{
+		boolean exitLoop = false;
+		float retVal = 0.0f;
+		
+		for (PAPhysObject item : items)
+		{
+			if (!exitLoop && item instanceof KPGlue)
+			{
+				retVal += ((KPGlue)item).spaceAmount();
+			}
+			else if (item instanceof KPBox)
+			{
+				exitLoop = true;
+				return retVal;
+			}
+			// penalties are ignored
+		}
+		return retVal;
+	}
+	
+	public PAWord firstWord()
+	{
+		for (PAPhysObject item : items)
+		{
+			if (item instanceof PAWord)
+			{
+				return (PAWord)item;
+			}
+		}
+		return null;
 	}
 	
 	public String textContent()

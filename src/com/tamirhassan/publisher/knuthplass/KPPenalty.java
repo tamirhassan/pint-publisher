@@ -1,5 +1,8 @@
 package com.tamirhassan.publisher.knuthplass;
 
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+
 import com.tamirhassan.publisher.model.PAFlexObject;
 import com.tamirhassan.publisher.model.PAPhysObject;
 
@@ -56,6 +59,18 @@ public class KPPenalty implements KPItem, PAFlexObject, PAPhysObject
 	public String toString()
 	{
 		return this.getClass().getName() + ": " + textContent();
+	}
+
+	@Override
+	public String tagName() 
+	{
+		return "kp-penalty";
+	}
+
+	@Override
+	public void writeToPhysDocument(Document doc, Element el) 
+	{
+		// do nothing
 	}
 
 	// height and width are obviously zero

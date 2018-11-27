@@ -88,6 +88,9 @@ public class PAFlexMultiCol extends PAFlexContainer
 	{
 		this.noCols = existingObj.noCols;
 		this.layoutMode = existingObj.layoutMode;
+		this.balanceCols = existingObj.balanceCols;
+		this.gutterWidth = existingObj.gutterWidth;
+		this.id = existingObj.id;
 		
 		// TODO: add all other fields
 	}
@@ -98,6 +101,14 @@ public class PAFlexMultiCol extends PAFlexContainer
 
 	public void setContent(List<PAFlexObject> content) {
 		this.content = content;
+	}
+
+	public float getGutterWidth() {
+		return gutterWidth;
+	}
+
+	public void setGutterWidth(float gutterWidth) {
+		this.gutterWidth = gutterWidth;
 	}
 
 	@Override

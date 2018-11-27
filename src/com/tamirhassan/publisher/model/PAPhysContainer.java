@@ -4,8 +4,16 @@ import java.awt.Color;
 import java.io.IOException;
 
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
 
-
+/**
+ * Renderable object in PDF
+ * TODO: rename this class? Is not necessarily a container for anything
+ * 
+ * @author tam
+ *
+ */
 public abstract class PAPhysContainer implements PAPhysObject
 {
 	float width;
@@ -13,6 +21,17 @@ public abstract class PAPhysContainer implements PAPhysObject
 	double demerits;
 	boolean markWarning = false;
 	int flexID;
+	
+	// alignment
+	final public static int ALIGN_LEFT = 0;
+	final public static int ALIGN_CENTRE = 1;
+	final public static int ALIGN_CENTRE_KNUTH = 11;
+	final public static int ALIGN_JUSTIFY = 2;
+	final public static int ALIGN_RIGHT = 3;
+	final public static int ALIGN_FORCE_JUSTIFY = 4;
+	
+	// justifies text, left-aligns other objects
+	protected int alignment = ALIGN_JUSTIFY;
 	
 	// TODO: standardize here on items?
 	// probably retain demerits as calculated field: for columns, best to do it on a per-line level
@@ -37,6 +56,14 @@ public abstract class PAPhysContainer implements PAPhysObject
 		this.height = height;
 	}
 	
+	public int getAlignment() {
+		return alignment;
+	}
+
+	public void setAlignment(int alignment) {
+		this.alignment = alignment;
+	}
+
 	public abstract float contentHeight();
 
 	public double getDemerits() {
@@ -62,7 +89,7 @@ public abstract class PAPhysContainer implements PAPhysObject
 		{
 			contentStream.saveGraphicsState();
 			contentStream.setStrokingColor(Color.RED);
-			contentStream.moveTo(x1, y2);
+			
 			contentStream.lineTo(x1 + width, y2);
 			contentStream.lineTo(x1 + width, y2 + height);
 			contentStream.lineTo(x1, y2 + height);
@@ -70,6 +97,17 @@ public abstract class PAPhysContainer implements PAPhysObject
 			contentStream.stroke();
 			contentStream.restoreGraphicsState();
 		}
+	}
+	
+	public void writeToPhysDocument(Document doc, Element el)
+	{
+		Element childEl = doc.createElement(tagName());
+		childEl.setAttribute("width", String.valueOf(width));
+		childEl.setAttribute("height", String.valueOf(height));
+		if (flexID != 0)
+			childEl.setAttribute("flex-id", String.valueOf(flexID));
+		
+		el.appendChild(childEl);
 	}
 	
 	public abstract void render(PDPageContentStream contentStream, 
@@ -80,7 +118,4 @@ public abstract class PAPhysContainer implements PAPhysObject
 		return this.getClass().getName() + ": " + textContent();
 	}
 	
-//	TODO!
-//	public abstract void render(PDPageContentStream contentStream, 
-//			float x1, float y2) throws IOException;
 }

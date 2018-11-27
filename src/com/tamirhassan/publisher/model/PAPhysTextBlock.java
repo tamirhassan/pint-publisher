@@ -9,8 +9,13 @@ import java.util.List;
 
 import org.apache.pdfbox.pdfwriter.COSWriter;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
+import org.apache.pdfbox.pdmodel.font.PDType1Font;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
 
+import com.tamirhassan.publisher.knuthplass.KPEmptyBox;
 import com.tamirhassan.publisher.knuthplass.KPGlue;
+import com.tamirhassan.publisher.knuthplass.KPItem;
 import com.tamirhassan.publisher.stylesheet.PACharFormatting;
 
 public class PAPhysTextBlock extends PAPhysContainer // implements PARenderable
@@ -75,6 +80,19 @@ public class PAPhysTextBlock extends PAPhysContainer // implements PARenderable
 		}
 		return retVal;
 		
+	}
+	
+	public float contentWidth()
+	{
+		float retVal = 0;
+		
+		for (PAPhysTextLine l : items)
+		{
+			if (l.contentWidth() > retVal)
+				retVal = l.contentWidth();
+		}
+		
+		return retVal;
 	}
 	
 	public String textContent()
@@ -245,7 +263,7 @@ public class PAPhysTextBlock extends PAPhysContainer // implements PARenderable
 						
 						if (horizAdjustment != 0)
 						{
-							System.out.println("horizontal adjustment in word: " + w.toString());
+//							System.out.println("horizontal adjustment in word: " + w.toString());
 							groups.add(currentGroup.toString());
 							currentGroup = new StringBuffer();
 							horizAdjustments.add(horizAdjustment);
@@ -415,11 +433,13 @@ public class PAPhysTextBlock extends PAPhysContainer // implements PARenderable
 		System.out.println();
 		float width = 0.0f;
 		
+		boolean firstBoxRendered = false;
+		
 		//for (PALSObject item : ls.getItems())
 		for (PAPhysObject item: l.getItems())
 		{
 			//if (item instanceof PALSFloat)
-			if (item instanceof KPGlue)
+			if (firstBoxRendered && item instanceof KPGlue)
 			{
 				// add a horizontal space consisting of:
 				// space character + kerning adjustment to achieve desired gap width
@@ -449,7 +469,7 @@ public class PAPhysTextBlock extends PAPhysContainer // implements PARenderable
 					int kernOperand = (int) (kernAdjust * -1);
 					// TODO: change all these values to floats?
 					
-					System.out.println("adding space as kernOperand: " + kernOperand);
+//					System.out.println("adding space as kernOperand: " + kernOperand);
 	
 //					operand.append(String.valueOf(spaceChar));
 //					operand.write(convertToPDFEncoding(String.valueOf(spaceChar)));
@@ -474,23 +494,41 @@ public class PAPhysTextBlock extends PAPhysContainer // implements PARenderable
 				}
 				else
 				{
+					System.err.println("shouldn't get here - no charFormatting set");
+					
+					// space at beginning of paragraph (indentation)
+					// taken care of by calling method
+					
 					// if space at beginning of paragraph (no previous font)
 					// just add the gap without the space character
 					
-					float spaceAmount = ((KPGlue)item).spaceAmount() * (1000 / currCF.getFontSize());
+					/*
+					
+					System.out.println("currCF");
+					System.out.println(currCF);
+					
+					// TODO: better way of doing this using font in rest of paragraph
+					PACharFormatting tempCF = new PACharFormatting(PDType1Font.TIMES_ROMAN, 6.0f);
+					
+					float spaceAmount = ((KPGlue)item).spaceAmount() * (1000 / tempCF.getFontSize());
 					int kernOperand = (int) (spaceAmount * -1);
 //					operand.append(Integer.toString(kernOperand));
 //					operand.write(convertToPDFEncoding(Integer.toString(kernOperand)));
 					operand.add(Integer.toString(kernOperand));
 					newOperand.add((float)kernOperand);
 					
-					/*
-					float kernAdjust = ((PALSFloat)item).getValue();
-					int kernOperand = (int) (kernAdjust * -1);
-					operand.append(Integer.toString(kernOperand));
-					*/
+//					float kernAdjust = ((PALSFloat)item).getValue();
+//					int kernOperand = (int) (kernAdjust * -1);
+//					operand.append(Integer.toString(kernOperand));
+					
+//					width += ((KPGlue)item).spaceAmount();
+					
+					System.out.println("space before text begin amount: " + ((KPGlue)item).spaceAmount());
+					System.out.println(this);
 					
 					System.err.println("space before text begin");
+					
+					*/
 				}
 				
 			}
@@ -598,6 +636,8 @@ public class PAPhysTextBlock extends PAPhysContainer // implements PARenderable
 					newOperand.add(w.getText());
 //					operand.add(" 0 ");
 				}
+				
+				firstBoxRendered = true;
 			}
 		}
 		
@@ -713,6 +753,26 @@ public class PAPhysTextBlock extends PAPhysContainer // implements PARenderable
 	}
 	
 	
+	@Override
+	public String tagName()
+	{
+		return "text-block";
+	}
+	
+	@Override
+	public void writeToPhysDocument(Document doc, Element el) 
+	{
+		Element childEl = doc.createElement(tagName());
+		childEl.setAttribute("width", String.valueOf(width));
+		childEl.setAttribute("height", String.valueOf(height));
+		if (flexID != 0)
+			childEl.setAttribute("flex-id", String.valueOf(flexID));  
+		
+		childEl.setTextContent(this.toString());
+		
+		el.appendChild(childEl);
+	}
+	
 	// TODO: font/fontsize/positioning changes
 	// can also occur within a line
 	
@@ -730,6 +790,7 @@ public class PAPhysTextBlock extends PAPhysContainer // implements PARenderable
 	protected float currPdfLeading = -1;
 	//protected boolean currKerning = true;
 	boolean prevObjectLine = false;
+	PAPhysTextLine prevLine = null;
 	
 	public void render(PDPageContentStream contentStream, 
 			float x1, float y2) throws IOException
@@ -748,13 +809,21 @@ public class PAPhysTextBlock extends PAPhysContainer // implements PARenderable
 		// account for height of first (text) line
 		// as rendering is baseline based
 		float yOffset = 0;
+		float xOffset = 0; // to manage indentation
 		if (items.size() > 0)
+		{
 			yOffset = items.get(0).getHeight();
-
+//			if (Float.isNaN(yOffset)) yOffset = 0;
+			xOffset = items.get(0).indentAmount();
+//			if (Float.isNaN(xOffset)) xOffset = 0; // sometimes an issue with empty lines w/o stretchability
+			
+		}
+		
 		contentStream.beginText();
 //		System.out.println("moving to offset: (" + x1 + ", " + (y2 - yOffset) + ")");
 //		contentStream.moveTextPositionByAmount(x1, (y2 - yOffset));
-		contentStream.newLineAtOffset(x1, (y2 - yOffset));
+//		contentStream.newLineAtOffset(x1, (y2 - yOffset));
+		contentStream.newLineAtOffset(x1 + xOffset, (y2 - yOffset));
 		
 		// set leading
 //		contentStream.appendRawCommands((1 - leading) + " TL \n");
@@ -766,7 +835,28 @@ public class PAPhysTextBlock extends PAPhysContainer // implements PARenderable
 		for (PAPhysTextLine l : items)
 		{
 			System.out.println("rendering line: " + l.textContent());
-			//System.out.println("contentWidth: " + l.contentWidth());
+			System.out.println("line width: " + l.getWidth());
+//			System.out.println("contentWidth: " + l.contentWidth());
+			
+			for (PAPhysObject i : l.getItems())
+			{
+				if (i instanceof KPGlue)
+				{
+//					System.out.println("glue: " + ((KPGlue)i).spaceAmount() + " amount: " + ((KPGlue)i).getAmount() + " adjRatio: " + ((KPGlue)i).getAdjRatio()+ " stretchability: " + ((KPGlue)i).getStretchability());
+				}
+				else if (i instanceof PAWord)
+				{
+//					System.out.println("word: " + ((PAWord)i).textContent() + " width: " + ((PAWord)i).width);
+				}
+				else if (i instanceof KPEmptyBox)
+				{
+//					System.out.println("empty box");
+				}
+				else
+				{
+//					System.out.println("other: " + i);
+				}
+			}
 			
 			// TEST 2
 			// calculate what the spacing should be ...
@@ -837,9 +927,18 @@ public class PAPhysTextBlock extends PAPhysContainer // implements PARenderable
 			// append newline between lines -- automatically adds leading space
 			if (prevObjectLine)
 			{
-//				contentStream.appendRawCommands("T* \n");
-				contentStream.newLine();
-//				System.out.println("appending: T* \\n");
+				if (l.indentAmount() != prevLine.indentAmount())
+				{
+					float fontSize = l.firstWord().getCharFormatting().getFontSize();
+					float tx = (l.indentAmount() - prevLine.indentAmount());
+					contentStream.newLineAtOffset(tx, 0.0f - currPdfLeading);
+				}
+				else // no change in indentation
+				{
+//					contentStream.appendRawCommands("T* \n");
+					contentStream.newLine();
+//					System.out.println("appending: T* \\n");
+				}
 			}
 			
 			
@@ -852,6 +951,7 @@ public class PAPhysTextBlock extends PAPhysContainer // implements PARenderable
 			//}
 			
 			prevObjectLine = true;
+			prevLine = l;
 		}
 		contentStream.endText();
 	}

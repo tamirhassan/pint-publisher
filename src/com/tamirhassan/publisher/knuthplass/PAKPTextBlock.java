@@ -27,14 +27,29 @@ import com.tamirhassan.publisher.model.PAWord;
  */
 public class PAKPTextBlock extends PAFlexBreakableObject
 {
+	/* 
+	// 2018-11-10 moved to PAFlexIncolObject
+	
 	final public static int ALIGN_LEFT = 0;
 	final public static int ALIGN_CENTRE = 1;
+	final public static int ALIGN_CENTRE_KNUTH = 11;
 	final public static int ALIGN_JUSTIFY = 2;
 	final public static int ALIGN_RIGHT = 3;
 	final public static int ALIGN_FORCE_JUSTIFY = 4;
 	
 	int alignment = ALIGN_JUSTIFY;
+	*/
+	
 	float lineSpacing = 1.2f;
+	
+	float firstLineIndent = 0.0f;
+	
+	/*
+	// probably better to just change box size!
+	float leftIndent = 0.0f;
+	float rightIndent = 0.0f;
+	float firstLineAdjustment = 0.0f;
+	*/
 	
 	// TODO: replace with penalties?
 	boolean preventWidows = true;
@@ -75,6 +90,8 @@ public class PAKPTextBlock extends PAFlexBreakableObject
 		retVal.setAlignment(this.alignment);
 		retVal.setLineSpacing(this.lineSpacing);
 		
+		// ID not copied!
+		
 		retVal.setStartBreakpointIndex(this.startBreakpointIndex);
 		retVal.setEndBreakpointIndex(this.endBreakpointIndex);
 		
@@ -90,6 +107,7 @@ public class PAKPTextBlock extends PAFlexBreakableObject
 		this.boxGlueItems = items;
 	}
 
+	/*
 	public int getAlignment() {
 		return alignment;
 	}
@@ -97,7 +115,8 @@ public class PAKPTextBlock extends PAFlexBreakableObject
 	public void setAlignment(int alignment) {
 		this.alignment = alignment;
 	}
-
+	*/
+	
 	public float getLineSpacing() {
 		return lineSpacing;
 	}
@@ -120,6 +139,14 @@ public class PAKPTextBlock extends PAFlexBreakableObject
 
 	public void setEndBreakpointIndex(int endBreakpointIndex) {
 		this.endBreakpointIndex = endBreakpointIndex;
+	}
+
+	public float getFirstLineIndent() {
+		return firstLineIndent;
+	}
+
+	public void setFirstLineIndent(float firstLineIndent) {
+		this.firstLineIndent = firstLineIndent;
 	}
 
 	public String textContent()
@@ -319,6 +346,7 @@ public class PAKPTextBlock extends PAFlexBreakableObject
 					if (prevWord.getCharFormatting().isSameFont(thisWord.getCharFormatting()))
 					{
 						prevWord.setText(prevWord.getText().concat(thisWord.getText()));
+						prevWord.setWidth(prevWord.getWidth() + thisWord.getWidth());
 						items.remove(i);
 						i --;
 					}
@@ -361,6 +389,13 @@ public class PAKPTextBlock extends PAFlexBreakableObject
 		{
 			index ++;
 			double adjRatio = result.getAdjRatios().get(index);
+			
+			// can occur with empty lines containing no stretchability
+			// obviously, values of infinity break rendering later on
+			// but this must be done earlier
+			if (!Double.isFinite(adjRatio))
+				adjRatio = 0;
+			
 			PAPhysTextLine l = new PAPhysTextLine();
 			float largestFontSize = 0;
 			
@@ -388,17 +423,28 @@ public class PAKPTextBlock extends PAFlexBreakableObject
 				{
 					// assumes that penalties inside of line have already been removed
 					
-					PAWord addBox = (PAWord) ((KPPenalty)item).getAdditionalBox();
+					KPBox addBox = ((KPPenalty)item).getAdditionalBox();
 					if (addBox != null) // do not add if null!
-						l.getItems().add(addBox);
-					
-					if (addBox != null && addBox instanceof PAWord)
-						if (addBox.getCharFormatting().getFontSize() > largestFontSize)
-							largestFontSize = addBox.getCharFormatting().getFontSize();
+					{
+						// all instantiable types are of type PAPhysObject:
+						// PAWord and KPEmptyBox
+						l.getItems().add(((PAPhysObject)addBox));
+						
+						if (addBox instanceof PAWord)
+						{
+							PAWord addWord = (PAWord)addBox;
+							if (addWord.getCharFormatting().getFontSize() > largestFontSize)
+							{
+								largestFontSize = addWord.getCharFormatting().getFontSize();
+							}
+						}
+					}
 				}
 			}
 			
 			l.setWidth(width);
+			if (l.contentWidth() < width)
+				l.setWidth(l.contentWidth());
 			l.setHeight(largestFontSize * lineSpacing);
 			l.setTextHeight(largestFontSize);
 //			l.setSpacingAfter(largestFontSize * (1 - lineSpacing));
@@ -407,6 +453,11 @@ public class PAKPTextBlock extends PAFlexBreakableObject
 			
 			System.out.println("for line: " + l.toString());
 			System.out.println("adjRatio: " + result.getAdjRatios().get(index));
+			
+			boolean finalLine = false;
+			if (index == (result.getItems().size() - 1)) finalLine = true;
+			
+			fixAlignment(l, thisLine, finalLine);
 			
 			if (mergeWords)
 			{
@@ -417,6 +468,91 @@ public class PAKPTextBlock extends PAFlexBreakableObject
 		}
 			
 		return retVal;
+	}
+	
+	protected void fixAlignment(PAPhysTextLine l, List<KPItem> kpItems, boolean finalLine)
+	{
+		if (alignment == ALIGN_LEFT || alignment == ALIGN_CENTRE)
+		{
+			// if line ends in a hyphenation penalty,
+			// swap the final two items
+			
+			if (!finalLine) // do not process last line
+			{
+				if (l.getItems().size() > 1 && 
+						kpItems.get(kpItems.size() - 1) instanceof KPPenalty)
+				{
+					// only flagged penalties are hyphenations
+					if (((KPPenalty)kpItems.get(kpItems.size() - 1)).isFlag())
+					{
+						PAPhysObject hyphen = l.getItems().remove(l.getItems().size() - 1);
+						l.getItems().add(l.getItems().size() - 1, hyphen);
+					}
+				}
+			}
+		}
+		if (alignment == ALIGN_CENTRE)
+		{
+			
+			// remove glues at end (penalties too, but they shouldn't be here)
+			while(l.getItems().size() > 0 &&
+					!(l.getItems().get(l.getItems().size() -1) instanceof KPBox)) 
+			{
+				l.getItems().remove(l.getItems().size() -1);
+			}
+			
+			// add glue equally to beginning and end of line
+			/*
+			if (l.getItems().size() > 0)
+			{
+				// 2018-06-29 contentWidth() method rewritten
+//				float glueWidth = (l.getWidth() - l.contentWidth(true)) / 2.0f;
+				float glueWidth = (l.getWidth() - l.contentWidth()) / 2.0f;
+				
+				l.getItems().add(0, new KPGlue(glueWidth));
+				l.getItems().add(l.getItems().size(), new KPGlue(glueWidth));
+			}
+			*/
+		}
+		else if (alignment == ALIGN_CENTRE_KNUTH)
+		{
+			// do nothing
+		}
+		else if (alignment == ALIGN_FORCE_JUSTIFY)
+		{
+			// do nothing
+		}
+		else if (alignment == ALIGN_JUSTIFY)
+		{
+			// do nothing
+		}
+	}
+	
+	// distributes space evenly before and after line in case of 
+	// centre (and later right) alignment
+	protected void fixCentreAlignment(List<PAPhysTextLine> lines, float width)
+	{
+		for (PAPhysTextLine l : lines)
+		{
+			if (alignment == ALIGN_CENTRE)
+			{
+				// add glue equally to beginning and end of line
+				
+				if (l.getItems().size() > 0)
+				{
+					// 2018-06-29 contentWidth() method rewritten
+//					float glueWidth = (l.getWidth() - l.contentWidth(true)) / 2.0f;
+					float glueWidth = (width - l.contentWidth()) / 2.0f;
+					
+					l.getItems().add(0, new KPGlue(glueWidth));
+					l.getItems().add(l.getItems().size(), new KPGlue(glueWidth));
+				}
+			}
+			else if (alignment == ALIGN_RIGHT)
+			{
+				// do nothing (yet)
+			}
+		}
 	}
 	
 	// TODO: combine these two methods with layout somehow
@@ -528,6 +664,8 @@ public class PAKPTextBlock extends PAFlexBreakableObject
 	 */
 	public PAFlexLayoutResult layout(float width, float height) { //, int startBreakpointIndex, int endBreakpointIndex)	{
 		
+		System.out.println("in layout of KP " + this.getClass());
+		
 //		try 
 //		{
 			// TODO: if ending at a hyphenation, turn this into the final break
@@ -603,11 +741,26 @@ public class PAKPTextBlock extends PAFlexBreakableObject
 			}
 			
 			laidOutLines = generateLineObjects(fitLines, width);
-						
+			
+			// TODO: find out target width of physical object
+			// if less than width, actual width (e.g. one-liner)
+			// else equal to (desired input) width
+			
+			float maxLineWidth = 0;
+			for (PAPhysTextLine l : laidOutLines)
+				if (l.getWidth() > maxLineWidth)
+					maxLineWidth = l.getWidth();
+			
+			float targetWidth = width;
+			if (maxLineWidth < width) targetWidth = maxLineWidth;
+			
 			PAPhysTextBlock result = new PAPhysTextBlock();
-			result.setWidth(width);
+			result.setWidth(targetWidth);
+			result.setAlignment(alignment);
 			result.setFlexID(id);
 			result.setItems(laidOutLines);
+			
+			fixCentreAlignment(laidOutLines, targetWidth);
 			
 			// do not include last line's spaceAfter in height calculation
 			if (result.contentHeight(false) > height)
@@ -619,7 +772,11 @@ public class PAKPTextBlock extends PAFlexBreakableObject
 				// generate partial result block
 				result = new PAPhysTextBlock();
 				result.setWidth(width);
+				result.setAlignment(alignment);
 				result.setFlexID(id);
+				
+				// TODO: copy the lines and readjust their width!
+				
 //				List<PAPhysTextLine> remainingContent = new ArrayList<PAPhysTextLine>();
 				
 				while (result.contentHeight(true) 
@@ -695,8 +852,20 @@ public class PAKPTextBlock extends PAFlexBreakableObject
 			}
 			
 			result.setHeight(result.contentHeight(true));
+			
+			// to delete! added to test indentation debugging
+			/*
+			PAPhysTextLine firstLine = result.getItems().get(0);
+			KPGlue quartInchIndent = new KPGlue(18.0f);
+			firstLine.getItems().add(0, quartInchIndent);
+			*/
+			
+//			fixAlignment(result);
+			
 			PAFlexLayoutResult retVal = new PAFlexLayoutResult(result, -1, null, 
 					PAFlexLayoutResult.ESTAT_SUCCESS);
+			
+			System.out.println("returning result of KP " + this.getClass());
 			
 			return retVal;
 			
@@ -711,6 +880,51 @@ public class PAKPTextBlock extends PAFlexBreakableObject
 //		System.out.println("number of low level text layouts: " + retVal.size());
 
 	}
+	
+	/*
+	protected void fixAlignment(PAPhysTextBlock result)
+	{
+		int index = -1;
+		for (PAPhysTextLine l : result.getItems())
+		{
+			index ++;
+			
+			if (alignment == ALIGN_LEFT || alignment == ALIGN_CENTRE)
+			{
+				// if line ends in a hyphenation penalty,
+				// swap the final two items
+				
+				if (index < (result.getItems().size() - 1)) // do not process last line
+				{
+					if (l.getItems().size() > 1 && 
+							l.getItems().get(l.getItems().size() - 1) instanceof KPPenalty)
+					{
+						PAPhysObject hyphen = l.getItems().remove(l.getItems().size() - 1);
+						l.getItems().add(l.getItems().size() - 2, hyphen);
+					}
+				}
+			}
+			if (alignment == ALIGN_CENTRE)
+			{
+				
+			}
+			else if (alignment == ALIGN_CENTRE_KNUTH)
+			{
+				// do nothing
+			}
+			else if (alignment == ALIGN_FORCE_JUSTIFY)
+			{
+				// do nothing
+			}
+			else if (alignment == ALIGN_JUSTIFY)
+			{
+				// do nothing
+			}
+			
+//			l.mergeWords();
+		}
+	}
+	*/
 	
 	
 	// TODO move to PAPhysTextBlock? But first make layout return a PAPhysTextBlock ...

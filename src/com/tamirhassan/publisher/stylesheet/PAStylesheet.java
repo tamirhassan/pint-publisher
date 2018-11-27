@@ -8,6 +8,7 @@ import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
@@ -22,15 +23,9 @@ import org.apache.fontbox.ttf.KerningTable;
 import org.apache.fontbox.ttf.TrueTypeFont;
 import org.apache.pdfbox.cos.COSName;
 import org.apache.pdfbox.pdmodel.PDDocument;
-import org.apache.pdfbox.pdmodel.font.PDTrueTypeFont;
 import org.apache.pdfbox.pdmodel.font.PDFont;
 import org.apache.pdfbox.pdmodel.font.PDType0Font;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
-import org.apache.pdfbox.pdmodel.font.encoding.MacExpertEncoding;
-import org.apache.pdfbox.pdmodel.font.encoding.MacOSRomanEncoding;
-import org.apache.pdfbox.pdmodel.font.encoding.MacRomanEncoding;
-import org.apache.pdfbox.pdmodel.font.encoding.StandardEncoding;
-import org.apache.pdfbox.pdmodel.font.encoding.Type1Encoding;
 import org.apache.pdfbox.pdmodel.font.encoding.WinAnsiEncoding;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -39,10 +34,15 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
+import com.tamirhassan.publisher.knuthplass.PAKPTextBlock;
+import com.tamirhassan.publisher.model.PAFlexFormattedParagraph;
+import com.tamirhassan.publisher.model.PAFlexIncolObject;
+
 public class PAStylesheet
 {
 	protected NodeList styles;
 	protected HashMap<String, PDFont> fontMap;
+	protected HashMap<String, List<String>> fontFamilyMap;
 	
 	// TODO: why does it only work with single root element (<doc-spec>)?
 	
@@ -109,6 +109,7 @@ public class PAStylesheet
 	public void loadFonts(PDDocument document)
 	{
 		fontMap = new HashMap<String, PDFont>();
+		fontFamilyMap = new HashMap<String, List<String>>();
 		
 		try
 		{
@@ -164,7 +165,11 @@ public class PAStylesheet
 //								font = PDTrueTypeFont.loadTTF(document, fontFile);
 								
 								// TODO: input stream, subsetting
-								font = PDType0Font.load(document, fontFile);
+//								font = PDType0Font.load(document, fontFile);
+								
+								// this should enable subsetting
+								InputStream otfIn = new FileInputStream(fontFile);
+								font = PDType0Font.load(document, otfIn, true);
 								
 								fontMap.put(fontName, font);
 							}
@@ -172,6 +177,54 @@ public class PAStylesheet
 						else
 						{
 							// TODO: error - incomplete font tag
+						}
+					}
+					else if (el.getTagName().equals("font-family"))
+					{
+						if (el.hasAttribute("name"))
+						{
+							String fontName = el.getAttribute("name");
+							
+							ArrayList<String> familyList = new ArrayList<String>(4);
+							for (int j = 0; j < 4; j ++)
+								familyList.add("");
+							
+							// currently support only the four typical styles
+							
+							if (el.hasAttribute("regular"))
+							{
+								familyList.set(0, el.getAttribute("regular"));
+							}
+							else if (el.hasAttribute("normal"))
+							{
+								familyList.set(0, el.getAttribute("normal"));
+							}
+							else if (el.hasAttribute("roman"))
+							{
+								familyList.set(0, el.getAttribute("roman"));
+							}
+							if (el.hasAttribute("italic"))
+							{
+								familyList.set(1, el.getAttribute("italic"));
+							}
+							else if (el.hasAttribute("cursive"))
+							{
+								familyList.set(1, el.getAttribute("cursive"));
+							}
+							if (el.hasAttribute("bold"))
+							{
+								familyList.set(2, el.getAttribute("bold"));
+							}
+							if (el.hasAttribute("bold-italic"))
+							{
+								familyList.set(3, el.getAttribute("bold-italic"));
+							}
+							else if (el.hasAttribute("bold-cursive"))
+							{
+								familyList.set(3, el.getAttribute("bold-cursive"));
+							}
+							
+							fontFamilyMap.put(fontName, familyList);
 						}
 					}
 				}
@@ -293,10 +346,29 @@ public class PAStylesheet
 		{
 			fontObj = PDType1Font.ZAPF_DINGBATS;
 		}
+		else if (fontFamilyMap.containsKey(fontName))
+		{
+			// families override fontnames if they are the same
+			
+			List<String> familyList = fontFamilyMap.get(fontName);
+			
+			int index = 0;
+			if (!isBold && !isItalic)
+				index = 0;
+			else if (!isBold && isItalic)
+				index = 1;
+			else if (isBold && !isItalic)
+				index = 2;
+			else if (isBold && isItalic)
+				index = 3;
+			
+			fontObj = fontMap.get(familyList.get(index));
+			// TODO: what if it is missing? fallback? error handling
+		}
 		else if (fontMap.containsKey(fontName))
 		{
+			// fallback if no family defined
 			fontObj = fontMap.get(fontName);
-			// TODO: bold and italic!
 		}
 		else
 		{
@@ -304,6 +376,147 @@ public class PAStylesheet
 		}
 		
 		return fontObj;
+	}
+	
+	/**
+	 * temporary method - will be replaced by a method to extract all
+	 * block-level styles; currently alignment is the only supported style
+	 * 
+	 */
+	/*
+	public int alignment(Element content)
+	{
+		int retVal = PAKPTextBlock.ALIGN_JUSTIFY;
+		
+		String tag = content.getTagName();
+		
+		for (int i = 0; i < styles.getLength(); i ++) 
+        {
+			if (styles.item(i) instanceof Element)
+			{
+				Element el = (Element) styles.item(i);
+				if (el.getTagName().equals("character") ||
+						el.getTagName().equals("block"))
+				{
+					if (el.getAttribute("tag").equals(tag))
+					{
+						// TODO: font dictionary. For now, only support inbuilt fonts
+						
+						// iterate through the attributes
+						NamedNodeMap attributes = el.getAttributes();
+						
+						for (int j = 0; j < attributes.getLength(); j ++) 
+			            {
+							Node att = attributes.item(j);
+							att.getNodeName();
+							
+							if (att.getNodeName().equals("alignment"))
+							{
+								String val = att.getNodeValue();
+								if (val.equals("left"))
+								{
+									retVal = PAKPTextBlock.ALIGN_LEFT;
+								}
+								else if (val.equals("right"))
+								{
+									retVal = PAKPTextBlock.ALIGN_RIGHT;
+								}
+								else if (val.equals("centre") || val.equals("center"))
+								{
+									retVal = PAKPTextBlock.ALIGN_CENTRE;
+								}
+								else if (val.equals("justify") || val.equals("justified"))
+								{
+									retVal = PAKPTextBlock.ALIGN_JUSTIFY;
+								}
+								else if (val.equals("force-justify") || val.equals("force-justified"))
+								{
+									retVal = PAKPTextBlock.ALIGN_FORCE_JUSTIFY;
+								}
+							}
+			            }	
+					}
+				}
+			}
+        }
+		
+		return retVal;
+	}
+	*/
+	
+	public void setBlockAttributes(PAFlexFormattedParagraph para)
+	{
+		int alignment = PAKPTextBlock.ALIGN_JUSTIFY;
+		float firstLineIndent = 0.0f;
+		
+		String tag = para.getContent().getTagName();
+		
+		for (int i = 0; i < styles.getLength(); i ++) 
+        {
+			if (styles.item(i) instanceof Element)
+			{
+				Element el = (Element) styles.item(i);
+				if (el.getTagName().equals("character") ||
+						el.getTagName().equals("block"))
+				{
+					if (el.getAttribute("tag").equals(tag))
+					{
+						// TODO: font dictionary. For now, only support inbuilt fonts
+						
+						// iterate through the attributes
+						NamedNodeMap attributes = el.getAttributes();
+						
+						for (int j = 0; j < attributes.getLength(); j ++) 
+			            {
+							Node att = attributes.item(j);
+							att.getNodeName();
+							
+							if (att.getNodeName().equals("alignment"))
+							{
+								String val = att.getNodeValue();
+								if (val.equals("left"))
+								{
+									alignment = PAFlexIncolObject.ALIGN_LEFT;
+								}
+								else if (val.equals("right"))
+								{
+									alignment = PAFlexIncolObject.ALIGN_RIGHT;
+								}
+								else if (val.equals("centre") || val.equals("center"))
+								{
+									alignment = PAFlexIncolObject.ALIGN_CENTRE;
+								}
+								else if (val.equals("justify") || val.equals("justified"))
+								{
+									alignment = PAFlexIncolObject.ALIGN_JUSTIFY;
+								}
+								else if (val.equals("force-justify") || val.equals("force-justified"))
+								{
+									alignment = PAFlexIncolObject.ALIGN_FORCE_JUSTIFY;
+								}
+							}
+							else if (att.getNodeName().equals("first-line-indent"))
+							{
+								firstLineIndent = Float.parseFloat(att.getNodeValue());
+							}
+							else if (att.getNodeName().equals("first-line-indent-first"))
+							{
+								if (para.isFirstPara())
+									firstLineIndent = Float.parseFloat(att.getNodeValue());
+							}
+							else if (att.getNodeName().equals("first-line-indent-following"))
+							{
+								if (!para.isFirstPara())
+									firstLineIndent = Float.parseFloat(att.getNodeValue());
+							}
+			            }	
+					}
+				}
+			}
+        }
+		
+		para.setAlignment(alignment);
+		para.setFirstLineIndent(firstLineIndent);
 	}
 	
 	/**
@@ -365,7 +578,7 @@ public class PAStylesheet
 								}
 								else if (att.getNodeName().equals("font-size"))
 								{
-									fontSize = Integer.parseInt(att.getNodeValue());
+									fontSize = Float.parseFloat(att.getNodeValue());
 								}
 								else 
 								{
@@ -416,12 +629,19 @@ public class PAStylesheet
 					f.setAccessible(true);
 					TrueTypeFont ttf = (TrueTypeFont) f.get(t0f); //IllegalAccessException
 					
-	//				KerningTable kt = ((PDType0Font) fontObj).getKerningTable();
-					KerningTable kt = ttf.getKerning();
-					KerningSubtable horizKerningSubtable = kt.getHorizontalKerningSubtable();
-					
-					if (horizKerningSubtable != null)
-						retVal.horizKerningSubtable = horizKerningSubtable;
+					if (ttf != null)
+					{
+		//				KerningTable kt = ((PDType0Font) fontObj).getKerningTable();
+						KerningTable kt = ttf.getKerning();
+						KerningSubtable horizKerningSubtable = kt.getHorizontalKerningSubtable();
+						
+						if (horizKerningSubtable != null)
+							retVal.horizKerningSubtable = horizKerningSubtable;
+					}
+					else
+					{
+						System.err.println("Problem obtaining kerning pairs from font: " + fontObj.getName());
+					}
 				}
 				catch (NoSuchFieldException nsfe)
 				{
@@ -484,8 +704,12 @@ public class PAStylesheet
 	 * @param tagTo
 	 * @return
 	 */
-	public float getInterblockSpacing(String tagFrom, String tagTo)
+	public float interblockSpacing(String tagFrom, String tagTo)
     {
+		// don't add extra space if vspace is used to override
+		if (tagFrom.equals("vspace") || tagTo.equals("vspace"))
+			return 0;
+		
     	float retVal = 0.0f;
     	
     	// iterate through the list, overriding any previous settings
@@ -519,6 +743,50 @@ public class PAStylesheet
         }
     	return retVal;
     }
+	
+	public float insetSpacing()
+	{
+		float retVal = 12.0f;
+		
+		for (int i = 0; i < styles.getLength(); i ++) 
+        {
+			if (styles.item(i) instanceof Element)
+			{
+				Element el = (Element) styles.item(i);
+				if (el.getTagName().equals("spacing"))
+				{
+					if (el.hasAttribute("inset"))
+					{
+						retVal = Float.parseFloat(el.getAttribute("inset"));
+					}	
+				}
+			}
+        }
+		
+		return retVal;
+	}
+	
+	public float gutterWidth()
+	{
+		float retVal = 12.0f;
+		
+		for (int i = 0; i < styles.getLength(); i ++) 
+        {
+			if (styles.item(i) instanceof Element)
+			{
+				Element el = (Element) styles.item(i);
+				if (el.getTagName().equals("spacing"))
+				{
+					if (el.hasAttribute("gutter"))
+					{
+						retVal = Float.parseFloat(el.getAttribute("gutter"));
+					}
+				}
+			}
+        }
+		
+		return retVal;
+	}
 	
 	// taken from: 
 	// https://stackoverflow.com/questions/26527191/java-concatinate-two-xml-nodelist

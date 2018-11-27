@@ -14,6 +14,7 @@ public class PAPhysPage //extends PAPhysObject
 {
 	// these are page specifications
 	List<PAPhysContainer> items = new ArrayList<PAPhysContainer>();
+	List<PAPhysAbsPosContainer> absItems = new ArrayList<PAPhysAbsPosContainer>();
 	float leftMargin;
 	float rightMargin;
 	float topMargin;
@@ -143,11 +144,19 @@ public class PAPhysPage //extends PAPhysObject
 		this.flexID = flexID;
 	}
 
+	public List<PAPhysAbsPosContainer> getAbsItems() {
+		return absItems;
+	}
+
+	public void setAbsItems(List<PAPhysAbsPosContainer> absItems) {
+		this.absItems = absItems;
+	}
+
 	public String textContent()
 	{
 		// TODO
-		System.err.println("PAPage.toText() not yet implemented");
-		return "";
+//		System.err.println("PAPage.toText() not yet implemented");
+		return "PAPhysPage";
 	}
 	
 	public String toString()
@@ -162,6 +171,10 @@ public class PAPhysPage //extends PAPhysObject
 		
 		// Start a new content stream which will "hold" the to be created content
 		PDPageContentStream contentStream = new PDPageContentStream(document, page);
+		
+		// add absolutely positioned items, if any (e.g. header, footer)
+		for (PAPhysAbsPosContainer item : absItems)
+			item.render(contentStream);
 		
 		// now add the page's content to this stream
 		for (PAPhysContainer item : items)

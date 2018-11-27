@@ -2,9 +2,13 @@ package com.tamirhassan.publisher.model;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
+import org.apache.commons.collections.map.HashedMap;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
 
 import com.tamirhassan.publisher.knuthplass.KPGlue;
 
@@ -47,7 +51,7 @@ public class PAPhysColumn extends PAPhysContainer //implements PARenderable
 		return retVal;
 	}
 	 */
-	
+
 	public String textContent()
 	{
 		StringBuffer retVal = new StringBuffer();
@@ -113,6 +117,12 @@ public class PAPhysColumn extends PAPhysContainer //implements PARenderable
 		float retVal = 0.0f;
 		for (PAPhysObject o : items)
 		{
+			// TODO: PAFlexSimpleTables are not included in this
+			// calculation!!!!!
+			// and in layout() method do not make equal to contentHeight
+			// unless result status is success!!! (otherwise keep as
+			// specified height)
+			
 			if (o instanceof PAPhysContainer)
 			{
 				retVal += ((PAPhysContainer) o).contentHeight();
@@ -120,6 +130,37 @@ public class PAPhysColumn extends PAPhysContainer //implements PARenderable
 			else if (o instanceof KPGlue)
 			{
 				retVal += ((KPGlue) o).getAmount();
+			}
+		}
+		return retVal;
+	}
+	
+	/**
+	 * calculate content height based on all
+	 * PARenderable and PAVSpace objects
+	 */
+	public float contentWidth()
+	{
+		float retVal = 0;
+		for (PAPhysObject o : items)
+		{
+			// TODO: PAFlexSimpleTables are not included in this
+			// calculation!!!!!
+			// and in layout() method do not make equal to contentHeight
+			// unless result status is success!!! (otherwise keep as
+			// specified height)
+			
+			if (o instanceof PAPhysTextBlock)
+			{
+				if (((PAPhysTextBlock) o).contentWidth() > retVal)
+					retVal = ((PAPhysTextBlock) o).contentWidth();
+			}
+			else if (o instanceof PAPhysContainer)
+			{
+				// TODO add to PAPhysContainer?
+			}
+			else if (o instanceof KPGlue)
+			{
 			}
 		}
 		return retVal;
@@ -221,7 +262,27 @@ public class PAPhysColumn extends PAPhysContainer //implements PARenderable
 			System.out.println(hashCode() + " item: " + o);
 			if (o instanceof PAPhysContainer) // was: PARenderable
 			{
-				((PAPhysContainer)o).render(contentStream, x1, y2);
+				PAPhysContainer pc = (PAPhysContainer)o;
+				float offsetX1 = x1;
+				if (pc.alignment == ALIGN_CENTRE ||
+					pc.alignment == ALIGN_CENTRE_KNUTH)
+				{
+					if (pc.width < width)
+					{
+						float xOffset = 0.5f * (width - pc.width);
+						offsetX1 += xOffset;
+					}
+				}
+				else if (pc.alignment == ALIGN_RIGHT)
+				{
+					if (pc.width < width)
+					{
+						float xOffset = width - pc.width;
+						offsetX1 += xOffset;
+					}
+				}
+				
+				((PAPhysContainer)o).render(contentStream, offsetX1, y2);
 				//y2 -= ((PAPhysContainer)o).contentHeight();
 				y2 -= ((PAPhysContainer)o).getHeight();
 				
@@ -231,6 +292,16 @@ public class PAPhysColumn extends PAPhysContainer //implements PARenderable
 			{
 				y2 -= ((KPGlue) o).getAmount();
 			}
+			/*
+			else if (o instanceof PAFlexHorizontalRule)
+			{
+				contentStream.saveGraphicsState();
+				contentStream.moveTo(x1, y2);
+				contentStream.lineTo(x1 + width, y2);
+				contentStream.stroke();
+				contentStream.restoreGraphicsState();
+			}
+			*/
 		}
 		
 		renderWarning(contentStream, x1, y2);
@@ -262,7 +333,29 @@ public class PAPhysColumn extends PAPhysContainer //implements PARenderable
 		
 		return intermRes;
 	}
+
+	@Override
+	public String tagName()
+	{
+		return "phys-col";
+	}
 	
+	@Override
+	public void writeToPhysDocument(Document doc, Element el) 
+	{
+		Element childEl = doc.createElement(tagName());
+		childEl.setAttribute("width", String.valueOf(width));
+		childEl.setAttribute("height", String.valueOf(height));
+		if (flexID != 0)
+			childEl.setAttribute("flex-id", String.valueOf(flexID));
+		
+		for (PAPhysObject cc : items)
+			cc.writeToPhysDocument(doc, childEl);
+		
+		el.appendChild(childEl);
+		
+	}
+
 	// deprecated
 	/*
 	public void renderLinesDirectly(PDPageContentStream contentStream, 

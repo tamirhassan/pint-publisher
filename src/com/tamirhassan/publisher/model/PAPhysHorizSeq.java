@@ -5,6 +5,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
 
 import com.tamirhassan.publisher.knuthplass.KPGlue;
 
@@ -72,6 +74,27 @@ public class PAPhysHorizSeq extends PAPhysContainer
 			}
 		}
 		return retVal;
+	}
+	
+	@Override
+	public String tagName()
+	{
+		return "horiz-seq";
+	}
+	
+	@Override
+	public void writeToPhysDocument(Document doc, Element el) 
+	{
+		Element childEl = doc.createElement(tagName());
+		childEl.setAttribute("width", String.valueOf(width));
+		childEl.setAttribute("height", String.valueOf(height));
+		if (flexID != 0)
+			childEl.setAttribute("flex-id", String.valueOf(flexID));
+		
+		for (PAPhysObject cc : items)
+			cc.writeToPhysDocument(doc, childEl);
+		
+		el.appendChild(childEl);
 	}
 	
 	public void render(PDPageContentStream contentStream, 

@@ -51,6 +51,8 @@ public class PAFlexColumn extends PAFlexContainer
 		}
 		else
 		{
+			// TODO: check whether objresult returned success or partial success
+			
 			System.out.println("float found");
 			// crude algorithm to start off
 			
@@ -77,23 +79,72 @@ public class PAFlexColumn extends PAFlexContainer
 				PAPhysColumn result = new PAPhysColumn();
 				result.width = width;
 				
-				result.getItems().add(floatResult.getResult());
+				
 				
 				// TODO: add spacer
 //				result.getItems().add(new KPGlue(6 * 72));
 				
-				float residualHeight = height - result.contentHeight();
+//				float residualHeight = height - floatResult.getResult().contentHeight();
+				float residualHeight = 
+						height - floatResult.getResult().height - thisFloat.spacing;
 				
 				PAFlexLayoutResult contentResult = layoutObject(width, residualHeight);
 				if (contentResult.exitStatus == PAFlexLayoutResult.ESTAT_SUCCESS ||
 				contentResult.exitStatus == PAFlexLayoutResult.ESTAT_PARTIAL_SUCCESS)
 				{
-					// columns inside of column
-					result.getItems().add(contentResult.getResult());
-					PAFlexLayoutResult retVal = new PAFlexLayoutResult
-							(result, -1, contentResult.remainingContent, contentResult.exitStatus);
+					// check that we haven't pushed float's calling point to next page
+					if (contentResult.getFloats().size() > 0 &&
+							contentResult.getFloats().get(0) == thisFloat)
+					{
+						if (thisFloat.appearsBelow)
+						{						
+							// columns inside of column
+							result.getItems().add(contentResult.getResult());
+							// add spacing with default stretch- and shrinkability (1/2 and 1/3)
+							result.getItems().add(new KPGlue(thisFloat.spacing));
+							PAFlexLayoutResult retVal = new PAFlexLayoutResult
+									(result, -1, contentResult.remainingContent, contentResult.exitStatus);
+							result.getItems().add(floatResult.getResult());
+							
+							return retVal;
+						}
+						else
+						{
+							result.getItems().add(floatResult.getResult());
+							
+							// columns inside of column
+							result.getItems().add(contentResult.getResult());
+							// add spacing with default stretch- and shrinkability (1/2 and 1/3)
+							result.getItems().add(new KPGlue(thisFloat.spacing));
+							PAFlexLayoutResult retVal = new PAFlexLayoutResult
+									(result, -1, contentResult.remainingContent, contentResult.exitStatus);
+							
+							return retVal;
+						}
+					}
+					else
+					{
+						// quickfix 2018-08-10
+						// float's calling point pushed to next page
+						// return initial result
+						// but always as partial success
+						// with float as remaining content
+						
+						objResult.exitStatus = PAFlexLayoutResult.ESTAT_PARTIAL_SUCCESS;
+						if (objResult.remainingContent != null)
+						{
+							PAFlexColumn remainingCol = (PAFlexColumn)objResult.remainingContent;
+							remainingCol.getContent().add(0, thisFloat);
+						}
+						else
+						{
+							PAFlexColumn remainingCol = new PAFlexColumn();
+							remainingCol.getContent().add(thisFloat);
+						}
+						
+						return objResult;
+					}
 					
-					return retVal;
 				}
 				else
 				{
@@ -177,9 +228,18 @@ public class PAFlexColumn extends PAFlexContainer
 				if (contentObj instanceof PAFlexFloat)
 				{
 					floats.add((PAFlexFloat)contentObj);
+					
+					// never backtrack, otherwise float might appear twice!
+					lastValidBreak = i;
 				}
 				else if (contentObj instanceof PAFlexContainer || contentObj instanceof PAFlexIncolObject)
 				{
+					if (contentObj instanceof PAFlexTable)
+					{
+						int dummy = 0;
+						dummy ++;
+					}
+					
 					// at a box
 					PAFlexLayoutResult resultObj = null;
 					
@@ -205,6 +265,17 @@ public class PAFlexColumn extends PAFlexContainer
 						{
 							resultObj = 
 									((PAFlexIncolObject)contentObj).layout(width);
+							
+							// 2018-08-10 hack added to check height
+							if (resultObj.getExitStatus() == PAFlexLayoutResult.ESTAT_SUCCESS)
+							{
+								if (resultObj.getResult().getHeight() > residualHeight)
+									resultObj.exitStatus = PAFlexLayoutResult.ESTAT_FAIL_INSUFFICIENT_HEIGHT;
+							}
+							
+							// TODO: perhaps move to PAFlexIncolObject - 2-parameter method?
+							// not to happy with altering the result object here,
+							// even though it's a disposable object
 						}
 					}
 					
@@ -215,6 +286,36 @@ public class PAFlexColumn extends PAFlexContainer
 						// add to result
 						result.getItems().add(resultObj.getResult());
 						resultHeight += resultObj.getResult().getHeight();
+						
+						/*
+						if (contentObj instanceof PAFlexIncolObject)
+						{
+							if (((PAFlexIncolObject) contentObj).alignment == 
+									PAFlexIncolObject.ALIGN_CENTRE ||
+									((PAFlexIncolObject) contentObj).alignment == 
+									PAFlexIncolObject.ALIGN_CENTRE_KNUTH)
+							{
+								if (resultObj.getResult().getWidth() < width)
+								{
+									float xOffset = 0.5f * 
+											(width - resultObj.getResult().getWidth());
+									
+									result.xOffsets.put(resultObj.getResult(), xOffset);
+								}
+							}
+							else if (((PAFlexIncolObject) contentObj).alignment == 
+									PAFlexIncolObject.ALIGN_RIGHT)
+							{
+								if (resultObj.getResult().getWidth() < width)
+								{
+									float xOffset =
+											(width - resultObj.getResult().getWidth());
+									
+									result.xOffsets.put(resultObj.getResult(), xOffset);
+								}
+							}
+						}
+						*/
 						
 						// TODO: demerits?
 						
@@ -346,7 +447,6 @@ public class PAFlexColumn extends PAFlexContainer
 			}
 			else
 			{
-				System.out.println("hundred");
 				// out of space
 				remainingContent.getContent().add(contentObj);
 			}
@@ -355,7 +455,7 @@ public class PAFlexColumn extends PAFlexContainer
 
 		// resultHeight calculation is not carried out in case of partical success
 		// call column's method instead
-		result.height = result.contentHeight();
+//		result.height = result.contentHeight();
 		
 		if (exitLoop)
 		{
@@ -369,6 +469,7 @@ public class PAFlexColumn extends PAFlexContainer
 		}
 		else
 		{
+			result.height = result.contentHeight();
 			return new PAFlexLayoutResult(result, -1.0f, null, floats,
 					PAFlexLayoutResult.ESTAT_SUCCESS);
 		}

@@ -1,4 +1,7 @@
 package com.tamirhassan.publisher.knuthplass;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+
 //this import (and extension) would be necessary to use KPGlue as a vspace too
 import com.tamirhassan.publisher.model.PAFlexObject;
 import com.tamirhassan.publisher.model.PAPhysObject;
@@ -10,8 +13,11 @@ public class KPGlue implements KPItem, PAFlexObject, PAPhysObject
 	float stretchability;
 	float shrinkability;
 	float adjRatio = 0;
+	
+	// 2018-06-26 check whether this variable is still necessary
 	boolean indent = false;
-
+	boolean isSpace = false;
+	
 	public boolean isIndent() {
 		return indent;
 	}
@@ -20,6 +26,7 @@ public class KPGlue implements KPItem, PAFlexObject, PAPhysObject
 		this.indent = indent;
 	}
 
+	
 	/**
 	 * creates a KPGlue object with default stretchability (2/3 amount)
 	 * and shrinkability (1/3 amount)
@@ -38,6 +45,13 @@ public class KPGlue implements KPItem, PAFlexObject, PAPhysObject
 		this.shrinkability = shrinkability;
 	}
 	
+	public KPGlue(float amount, float stretchability, float shrinkability, boolean isSpace) {
+		this.amount = amount;
+		this.stretchability = stretchability;
+		this.shrinkability = shrinkability;
+		this.isSpace = isSpace;
+	}
+	
 	/**
 	 * clones the glueItem object and sets the adjacency ratio
 	 * 
@@ -48,6 +62,7 @@ public class KPGlue implements KPItem, PAFlexObject, PAPhysObject
 		this.amount = glueItem.amount;
 		this.stretchability = glueItem.stretchability;
 		this.shrinkability = glueItem.shrinkability;
+		this.isSpace = glueItem.isSpace;
 		this.adjRatio = adjRatio;
 	}
 	
@@ -75,6 +90,14 @@ public class KPGlue implements KPItem, PAFlexObject, PAPhysObject
 		this.shrinkability = shrinkability;
 	}
 	
+	public boolean isSpace() {
+		return isSpace;
+	}
+
+	public void setSpace(boolean isSpace) {
+		this.isSpace = isSpace;
+	}
+
 	public float getAdjRatio() {
 		return adjRatio;
 	}
@@ -107,6 +130,22 @@ public class KPGlue implements KPItem, PAFlexObject, PAPhysObject
 				new KPGlue(this.amount, this.stretchability, this.shrinkability);
 		retVal.setAdjRatio(this.adjRatio);
 		return retVal;
+	}
+
+	@Override
+	public String tagName() 
+	{
+		return "kp-glue";
+	}
+
+	@Override
+	public void writeToPhysDocument(Document doc, Element el) 
+	{
+		Element childEl = doc.createElement("kp-glue");
+		childEl.setAttribute("amount", String.valueOf(amount));
+		childEl.setAttribute("adj-ratio", String.valueOf(adjRatio));
+		
+		el.appendChild(childEl);
 	}
 
 	/*

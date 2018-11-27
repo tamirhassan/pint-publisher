@@ -51,7 +51,7 @@ public class PACharFormatting
 		{
 			try 
 			{
-				System.out.println("returning TT char width of " + code + ": " + font.getStringWidth(Character.toString(code)));
+//				System.out.println("returning TT char width of " + code + ": " + font.getStringWidth(Character.toString(code)));
 				return (int) font.getStringWidth(Character.toString(code));
 			} 
 			catch (IOException ioe) 

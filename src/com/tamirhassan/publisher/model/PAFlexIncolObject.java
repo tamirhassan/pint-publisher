@@ -12,6 +12,19 @@ import java.util.List;
  */
 public abstract class PAFlexIncolObject implements PAFlexObject
 {	
+	// alignment
+	final public static int ALIGN_LEFT = 0;
+	final public static int ALIGN_CENTRE = 1;
+	final public static int ALIGN_CENTRE_KNUTH = 11;
+	final public static int ALIGN_JUSTIFY = 2;
+	final public static int ALIGN_RIGHT = 3;
+	final public static int ALIGN_FORCE_JUSTIFY = 4;
+	
+	// justifies text, left-aligns other objects
+	protected int alignment = ALIGN_JUSTIFY;
+	
+	// content width vs actual width?
+	
 	public abstract PAFlexLayoutResult layout(float width);
 	public int id = 0;
 	
@@ -28,5 +41,11 @@ public abstract class PAFlexIncolObject implements PAFlexObject
 		this.id = id;
 	}
 	
-	
+	public int getAlignment() {
+		return alignment;
+	}
+
+	public void setAlignment(int alignment) {
+		this.alignment = alignment;
+	}
 }

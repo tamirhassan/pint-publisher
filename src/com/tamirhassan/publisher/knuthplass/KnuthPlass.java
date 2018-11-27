@@ -107,7 +107,7 @@ public class KnuthPlass
 				}
 		}
 		
-//		System.out.println("LO legal breakpoints found: " + legalBreakpoints.size());
+		System.out.println("LO legal breakpoints found: " + legalBreakpoints.size());
 	}
 	
 	/*
@@ -328,7 +328,7 @@ public class KnuthPlass
 				if (!goneTooFar && fb.index != legalBreakpoint) // breakpoints not equal
 				{
 					List<KPItem> newLineObjects = fb.getItemsTo(legalBreakpoint);
-					System.out.println("newLineObjects: " + newLineObjects.size());
+//					System.out.println("newLineObjects: " + newLineObjects.size());
 					
 					// if not at last breakpoint, remove glue at end
 					if (legalBreakpoint != breakpointsCopy.get(breakpointsCopy.size() - 1))
@@ -338,7 +338,7 @@ public class KnuthPlass
 					float adjRatio = Float.NEGATIVE_INFINITY; // default = line too long
 					try 
 					{
-						System.out.println("calling findAdjRatio with newLineObjects hc: " + newLineObjects.hashCode());
+//						System.out.println("calling findAdjRatio with newLineObjects hc: " + newLineObjects.hashCode());
 						adjRatio = findAdjustmentRatio(newLineObjects, width,
 								addedStretchability, addedShrinkability);
 					} 
@@ -617,6 +617,8 @@ public class KnuthPlass
 		for (Integer bp : breakpoints)
 			breakpointsCopy.add(bp);
 		
+//		System.out.println("in runKnuthPlass...");
+		
 //		System.out.println("td1 tempLegalBreakpointIndices.size: " + tempLegalBreakpointIndices.size());
 		
 		List<FeasibleBreakpoint> activeBreakpoints = new ArrayList<FeasibleBreakpoint>();
@@ -645,20 +647,28 @@ public class KnuthPlass
 					System.out.println("**one with fb.index: " + fb.index);
 					*/
 					
-					List<KPItem> newLineObjects = fb.getItemsTo(legalBreakpoint);
+					// 2018-06-22 changed to legalBreakpoint - 1
+					List<KPItem> newLineObjects = fb.getItemsTo(legalBreakpoint - 1);
 //					System.out.println("newLineObjects: " + newLineObjects.size());
 					
 					// if not at last breakpoint, remove glue at end
+					// 2018-06-19 causes problems for left-alignment
+					/*
 					if (legalBreakpoint != breakpointsCopy.get(breakpointsCopy.size() - 1))
 						removeGlueAtEnd(newLineObjects);
+					*/
 					
 					// calculate necessary adjustment ratio
 					float adjRatio = Float.NEGATIVE_INFINITY; // default = line too long
 					try 
 					{
-//						System.out.println("calling findAdjRatio with newLineObjects hc: " + newLineObjects.hashCode());
+//						for (KPItem kpi : newLineObjects)
+//							System.out.println(kpi + "  ");
+//						System.out.println();
+//						System.out.println("calling findAdjRatio with " + newLineObjects.size() + " newLineObjects hc: " + newLineObjects.hashCode());
 						adjRatio = findAdjustmentRatio(newLineObjects, width,
 								addedStretchability, addedShrinkability);
+//						System.out.println("adjRatio is: " + adjRatio);
 					} 
 					catch (KnuthPlassException e) 
 					{
@@ -685,6 +695,9 @@ public class KnuthPlass
 							newFB.prevBreaks.add(existingBreak);
 						newFB.prevBreaks.add(fb.index);
 						acceptableBreakpoints.add(newFB);
+						
+//						System.out.println("fb.hashCode: " + fb.hashCode());
+//						System.out.println("fb.index: " + fb.index);
 					}
 					
 					// check if new line is too long -- in this case remove from active list
@@ -1223,9 +1236,9 @@ public class KnuthPlass
 					
 					// TODO: ?do penalties remain in the line to simplify calculation of demerits?
 
-					PAWord additionalBox = ((PAWord)((KPPenalty)item).getAdditionalBox());
+					KPBox additionalBox = ((KPPenalty)item).getAdditionalBox();
 					if (additionalBox != null)
-						retVal += additionalBox.getWidth();
+						retVal += additionalBox.getAmount();
 					
 				}
 		}
@@ -1317,7 +1330,7 @@ public class KnuthPlass
 			
 //			System.out.println("total stretchability: " + totalStretchability);
 			
-			return glueExpansion/totalStretchability;
+ 			return glueExpansion/totalStretchability;
 		}
 		else
 		{
@@ -1361,7 +1374,9 @@ public class KnuthPlass
 			
 			// set penalty if this line ends in a penalty item K-P p.1127 (p9 PDF)
 			if (thisLine.get(thisLine.size() - 1) instanceof KPPenalty)
+			{
 				penalty = thisLine.get(thisLine.size() - 1).getAmount();
+			}
 			
 			double consecutivePenalty = 0; // TODO consecutive penalty
 			
@@ -1374,11 +1389,15 @@ public class KnuthPlass
 //				System.out.print("d1 " + " adjRatio: " + adjRatio + " badness: " + badness + " penalty: " + penalty + " ");
 				demerits = Math.pow((1 + badness + penalty), 2) + consecutivePenalty;
 			}
-			else if (penalty > -1000) // and <= 0
+			else // if (penalty > -1000) // and <= 0
 			{
 //				System.out.print("d2 ");
 				demerits = Math.pow((1 + badness), 2) - Math.pow(penalty, 2) + consecutivePenalty;
 			}
+			/*
+			// 2018-06-28 seems to work better with this case commented out
+			// otherwise the infinity does not play as much of a role?
+			// used for experiments with <br/>
 			else // penalty < -1000 (-infinity) 
 			{
 				// YES, this line is necessary! We do not need to consider the
@@ -1390,6 +1409,7 @@ public class KnuthPlass
 //				System.out.print("d3 ");
 				demerits = Math.pow((1 + badness), 2) + consecutivePenalty;
 			}
+			*/
 			
 //			System.out.println(demerits);
 			retVal += demerits;
@@ -1546,8 +1566,11 @@ class FeasibleBreakpoint
 		
 		List<KPItem> retVal = new ArrayList<KPItem>();
 
-		for (int i = index + 1; i <= newBreakpointIndex; i ++)
-			retVal.add(lineObjects.get(i));
+		//for (int i = index + 1; i <= newBreakpointIndex; i ++)
+		// K-P p. 1125 (PDF 7) defines a the next line as including the bp index
+		for (int i = index; i <= newBreakpointIndex; i ++)
+			if (i >= 0) // first breakpoint index is -1
+				retVal.add(lineObjects.get(i));
 //		System.out.println(" from " + index);
 
 		removeItemsAtBeginningAndEnd(retVal, false);
@@ -1572,13 +1595,27 @@ class FeasibleBreakpoint
 		{
 			List<KPItem> thisLine = new ArrayList<KPItem>();
 			
+//			changed 2018-06-22
 			//for (int j = prevBreaks.get(i - 1) + 1; j <= prevBreaks.get(i); j ++)
-			int firstItemIndex = breaks.get(i - 1) + 1; // prevBreaks.get(prevBreaks.size()-2) + 1 on last iteration
-			int lastItemIndex = breaks.get(i);
+//			int firstItemIndex = breaks.get(i - 1) + 1; // prevBreaks.get(prevBreaks.size()-2) + 1 on last iteration
+//			int lastItemIndex = breaks.get(i);
+//			thisLine.addAll(lineObjects.subList(firstItemIndex, lastItemIndex + 1));
+			
+			int firstItemIndex = breaks.get(i - 1); // prevBreaks.get(prevBreaks.size()-2) + 1 on last iteration
+			if (firstItemIndex < 0)
+				firstItemIndex = 0;
+			int lastItemIndex = breaks.get(i) - 1;
 			
 //			System.out.print("*(" + (breaks.get(i - 1) + 1) + ", " + breaks.get(i) + ") ");
 			
+			// from firstItemIndex to lastItemIndex inclusive
 			thisLine.addAll(lineObjects.subList(firstItemIndex, lastItemIndex + 1));
+			
+			// if breaking at a penalty add it (must be <10000, else it wouldn't have been a breakpoint)
+			// it gets added again at the next line, but gets removed later
+			if (lineObjects.get(breaks.get(i)) instanceof KPPenalty)
+				thisLine.add(lineObjects.get(breaks.get(i)));
+			
 			retVal.add(thisLine);
 		}
 		
@@ -1623,12 +1660,14 @@ class FeasibleBreakpoint
 			
 			// removing at end for all but last line (finishing glue)
 			
+			/* // changed 2018-06-22 - no removing at end!
 			if (line == retVal.get(retVal.size() - 1))
 				removeItemsAtBeginningAndEnd(line, false);
 			else
 				removeItemsAtBeginningAndEnd(line, true);
+			*/
 			
-			//removeItemsAtBeginningAndEnd(line, false);
+			removeItemsAtBeginningAndEnd(line, false);
 			
 			/*
 			List<KPItem> itemsToRemove = new ArrayList<KPItem>();

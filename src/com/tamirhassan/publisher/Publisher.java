@@ -66,21 +66,26 @@ import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
-import at.ac.tuwien.dbai.pdfwrap.exceptions.DocumentProcessingException;
-
 import com.tamirhassan.publisher.knuthplass.KPGlue;
 import com.tamirhassan.publisher.knuthplass.KPPenalty;
+import com.tamirhassan.publisher.knuthplass.PAKPTextBlock;
 import com.tamirhassan.publisher.model.PAFlexColumn;
 import com.tamirhassan.publisher.model.PAFlexContainer;
 import com.tamirhassan.publisher.model.PAFlexFigure;
 import com.tamirhassan.publisher.model.PAFlexFloat;
 import com.tamirhassan.publisher.model.PAFlexFormattedParagraph;
+import com.tamirhassan.publisher.model.PAFlexHorizontalRule;
+import com.tamirhassan.publisher.model.PAFlexIncolObject;
+import com.tamirhassan.publisher.model.PAFlexInset;
 import com.tamirhassan.publisher.model.PAFlexLayoutResult;
 import com.tamirhassan.publisher.model.PAFlexMultiCol;
 import com.tamirhassan.publisher.model.PAFlexObject;
 import com.tamirhassan.publisher.model.PAFlexPageSpec;
 import com.tamirhassan.publisher.model.PAFlexParagraph;
 import com.tamirhassan.publisher.model.PAFlexSimpleParagraph;
+import com.tamirhassan.publisher.model.PAFlexTable;
+import com.tamirhassan.publisher.model.PAFlexSimpleTable;
+import com.tamirhassan.publisher.model.PAPhysAbsPosContainer;
 import com.tamirhassan.publisher.model.PAPhysBitmapGraphic;
 import com.tamirhassan.publisher.model.PAPhysColumn;
 import com.tamirhassan.publisher.model.PAPhysContainer;
@@ -88,8 +93,9 @@ import com.tamirhassan.publisher.model.PAPhysGraphic;
 import com.tamirhassan.publisher.model.PAPhysHorizSeq;
 import com.tamirhassan.publisher.model.PAPhysObject;
 import com.tamirhassan.publisher.model.PAPhysPage;
-import com.tamirhassan.publisher.model.PAPhysTextBlock;
 import com.tamirhassan.publisher.stylesheet.PAStylesheet;
+
+import at.ac.tuwien.dbai.pdfwrap.exceptions.DocumentProcessingException;
 
 
 /**
@@ -221,20 +227,40 @@ public class Publisher
             // assume frame order in order written to file (for now)
             List<PAPhysColumn> frames = obtainFrameOrder(pages);
             
-            List<PAPhysColumn> contentFrames = new ArrayList<PAPhysColumn>();
-            List<PAPhysColumn> floatFrames = new ArrayList<PAPhysColumn>();
+//          List<PAPhysColumn> contentFrames = new ArrayList<PAPhysColumn>();
+//          List<PAPhysColumn> floatFrames = new ArrayList<PAPhysColumn>();
+            
+            // sort frame list into articles/flows
+            HashMap<Integer, List<PAPhysColumn>> articleMap =
+            		new HashMap<Integer, List<PAPhysColumn>>();
             
             for (PAPhysColumn frame : frames)
-            	if (frame.getFlexID() > 0)
-            		contentFrames.add(frame);
-            	else // can only be = -1
-            		floatFrames.add(frame);
+            {
+            	if (articleMap.containsKey(frame.getFlexID()))
+            	{
+            		articleMap.get(frame.getFlexID()).add(frame);
+            	}
+            	else
+            	{
+            		List<PAPhysColumn> frameList = new ArrayList<PAPhysColumn>();
+            		frameList.add(frame);
+            		articleMap.put(frame.getFlexID(), frameList);
+            	}
+            }
             
-            // assume content object order in order written to file (for now)
-            List<PAFlexObject> content = obtainContentSequence(flexDoc);
+            // TODO: obtainContentSequence takes a flexID
+            // run for all flows
             
-            // TODO: content - match up to flex-phys table
-            layoutTextIntoColumns(contentFrames, floatFrames, content);
+            for (int articleID : articleMap.keySet())
+            {
+            	List<PAFlexObject> content = 
+            			obtainContentSequence(flexDoc, articleID);
+            	List<PAPhysColumn> frameList = articleMap.get(articleID);
+            	
+            	layoutTextIntoColumns(frameList, content);
+            }
+            
+            // TODO: mark stuff in red that doesn't fit!
             
          	// output the phys document
             writePhysDocument(pages, physFile);
@@ -296,6 +322,8 @@ public class Publisher
     		}
     		System.out.println("finished render, pageIndex is now: " + pageIndex);
     		
+    		
+    		// TODO: embed the physical and flex files here
     		// Save the results and ensure that the document is properly closed:
     		document.save( outFile );
     		document.close();
@@ -304,36 +332,85 @@ public class Publisher
         
     }
     
-    protected static List<PAFlexObject> recObtainContentSequence(PAFlexContainer c)
+    protected static List<PAFlexObject> recObtainContentSequence
+    		(PAFlexContainer c, int flexId, int prevID)
     {
     	List<PAFlexObject> retVal = new ArrayList<PAFlexObject>();
     	
-    	for (PAFlexObject o : c.getContent())
+    	// cannot always check against c.getID()
+    	// as sometimes c.getID() == 0 (as for e.g. page)
+    	// and we need to go one level up
+    	int closestValidID = c.getID();
+    	if (c.getID() <= 0)
+    		closestValidID = prevID;
+    	
+    	// c.getContent() is empty for PAFlexFigure
+    	if (c instanceof PAFlexFigure)
     	{
-    		if (o instanceof PAFlexColumn || o instanceof PAFlexMultiCol)
+    		if (closestValidID == flexId)
     		{
-    			// recurse 
-    			retVal.addAll(recObtainContentSequence((PAFlexContainer)o));
+    			retVal.add(c);
     		}
-    		else
-    		{
-    			// Paragraph (not a PAFlexContainer), Figure (a container), Graphic (phys), etc. 
-    			// TODO: sort out object model
-    			retVal.add(o); 
-    		}
+    	}
+    	else
+    	{
+	    	for (PAFlexObject o : c.getContent())
+	    	{
+	    		if (o instanceof PAFlexContainer) 
+	    		{
+	    			// recurse 
+	    			retVal.addAll(recObtainContentSequence
+	    					((PAFlexContainer)o, flexId, closestValidID));
+	    		}
+	    		else
+	    		{
+	    			// PAFlexIncolObject, KPGlue or KPPenalty
+	    			
+	    			// Paragraph (not a PAFlexContainer), Figure (a container), Graphic (phys), etc. 
+	    			if (closestValidID == flexId)
+	    				retVal.add(o);
+	    		}
+	    	}
     	}
     	
     	return retVal;
     }
     
-    protected static List<PAFlexObject> obtainContentSequence(List<PAFlexPageSpec> flexDoc)
+    protected static List<PAFlexObject> obtainContentSequence
+    		(List<PAFlexPageSpec> flexDoc, int flexId)
     {
     	List<PAFlexObject> retVal = new ArrayList<PAFlexObject>();
     	
     	for (PAFlexPageSpec ps : flexDoc)
     	{
     		// content is a single PAFlexColumn
-    		retVal.addAll(recObtainContentSequence(ps.getContent())); 
+    		retVal.addAll(recObtainContentSequence(ps.getContent(), flexId, ps.getID())); 
+    	}
+    	
+    	return retVal;
+    }
+    
+    
+    protected static List<List<PAPhysColumn>> recObtainFrameOrders(PAPhysContainer c)
+    {
+    	List<List<PAPhysColumn>> retVal = new ArrayList<List<PAPhysColumn>>();
+    	
+    	// if horiz-seq
+    	
+    	return retVal;
+    }
+    
+    protected static List<List<PAPhysColumn>> obtainFrameOrders(List<PAPhysPage> pages)
+    {
+    	List<List<PAPhysColumn>> retVal = new ArrayList<List<PAPhysColumn>>();
+    	
+    	for (PAPhysPage page : pages)
+    	{
+    		System.out.println("new page");
+    		for (PAPhysContainer c : page.getItems())
+    		{
+    			retVal.addAll(recObtainFrameOrder(c));
+    		}
     	}
     	
     	return retVal;
@@ -353,9 +430,11 @@ public class Publisher
     		
     		if (c.getFlexID() > 0 || c.getFlexID() == -1)
     		{
+    			System.out.println("adding PAPhysColumn");
     			retVal.add(col);
     		}
-    		else
+//    		2018-08-12 "else" removed
+//    		else
     		{
     			for (PAPhysObject o : col.getItems())
         		{
@@ -405,13 +484,125 @@ public class Publisher
     	
     	for (PAPhysPage page : pages)
     	{
+    		System.out.println("new page");
     		for (PAPhysContainer c : page.getItems())
+    		{
     			retVal.addAll(recObtainFrameOrder(c));
+    		}
     	}
     	return retVal;
     }
     
+    protected static int layoutFloatIntoFrame(PAPhysColumn frame, PAFlexFloat flt)
+    {
+    	PAFlexLayoutResult res = flt.layout(frame.getWidth(), frame.getHeight());
+    	
+    	PAPhysColumn resultCol = (PAPhysColumn) res.getResult();
+    	
+    	frame.setItems(resultCol.getItems());
+    	
+    	return res.getExitStatus();
+    }
+    
+    // TODO: return a list of floats and pages
     protected static void layoutTextIntoColumns(List<PAPhysColumn> contentFrames, 
+	    		List<PAFlexObject> content)
+	    {
+    		if (content.size() == 1 && content.get(0) instanceof PAFlexFloat)
+    		{
+    			layoutFloatIntoFrame(contentFrames.get(0), (PAFlexFloat) content.get(0));
+    			return;
+    		}
+    	
+	    	List<PAPhysColumn> unusedContentFrames = new ArrayList<PAPhysColumn>();
+	    	for (PAPhysColumn c : contentFrames)
+	    		unusedContentFrames.add(c);
+	    	
+	    	List<PAFlexObject> remainingContent = new ArrayList<PAFlexObject>();
+	    	for (PAFlexObject o : content)
+	    		remainingContent.add(o);
+	    	
+	    	List<PAFlexFloat> floats = new ArrayList<PAFlexFloat>();
+	    	
+	    	while(unusedContentFrames.size() > 0 && remainingContent.size() > 0)
+	    	{
+	    		PAPhysColumn col = unusedContentFrames.remove(0);
+	    		
+	    		// this method creates a FlexColumn and lays it out anew
+	    		PAFlexLayoutResult res = col.layoutColumn(remainingContent);
+	    		
+	    		if (res.getExitStatus() == PAFlexLayoutResult.ESTAT_SUCCESS ||
+	    				res.getExitStatus() == PAFlexLayoutResult.ESTAT_PARTIAL_SUCCESS)
+	    		{
+	    			PAPhysColumn resultCol = (PAPhysColumn)res.getResult();
+	    			col.setItems(resultCol.getItems());
+	    			col.setHeight(resultCol.getHeight());
+	    			col.setWidth(resultCol.getWidth());
+	    			col.setDemerits(resultCol.getDemerits());
+	    			
+	    			floats.addAll(res.getFloats());
+	    			
+	    			// reobtains the items
+	    			if (res.getExitStatus() == PAFlexLayoutResult.ESTAT_PARTIAL_SUCCESS)
+	    				remainingContent = ((PAFlexColumn)res.getRemainingContent()).getContent();
+	    			else
+	    				remainingContent.clear();
+	    		}
+	    	}
+	    	
+	    	if (unusedContentFrames.size() > 0)
+	    		System.out.println("more frames than required for content; should be removed");
+	    	
+	    	if (remainingContent.size() > 0)
+	    		System.out.println("content truncated; more frames need to be added according to rules");
+	    	
+	    	// check and lay out floats!
+	    	// TODO: deal with float edits (change height of dock)!
+	    	
+	    	/*
+	    	List<PAPhysColumn> unusedFloatFrames = new ArrayList<PAPhysColumn>();
+	    	for (PAPhysColumn c : floatFrames)
+	    		unusedFloatFrames.add(c);
+	    	
+	    	while(unusedFloatFrames.size() > 0 && floats.size() > 0)
+	    	{
+	    		PAPhysColumn frame = unusedFloatFrames.remove(0);
+	    		
+	    		PAFlexFloat ffloat = floats.remove(0);
+	    		
+	//    		this does not work - "content" is unused in figures
+	//    		PAFlexLayoutResult res = frame.layoutColumn(ffloat.getContent());
+	    		PAFlexLayoutResult res = ffloat.layout(frame.getWidth(), frame.getHeight());
+	    		
+	    		
+	    		if (res.getExitStatus() == PAFlexLayoutResult.ESTAT_SUCCESS ||
+	    				res.getExitStatus() == PAFlexLayoutResult.ESTAT_PARTIAL_SUCCESS)
+	    		{
+	    			PAPhysColumn resultCol = (PAPhysColumn)res.getResult();
+	    			frame.setItems(resultCol.getItems());
+	    			frame.setHeight(resultCol.getHeight());
+	    			frame.setWidth(resultCol.getWidth());
+	    			frame.setDemerits(resultCol.getDemerits());
+	    		}
+	    		else
+	    		{
+	    			System.out.println("Float did not fit into space");
+	    		}
+	    		if (res.getExitStatus() == PAFlexLayoutResult.ESTAT_PARTIAL_SUCCESS)
+	    		{
+	    			System.out.println("Float did not fit completely into space");
+	    		}
+	    	}
+	    	
+	    	if (unusedFloatFrames.size() > 0)
+	    		System.out.println("more frames than required for floats; should be removed");
+	    	
+	    	if (floats.size() > 0)
+	    		System.out.println("floats truncated; more frames need to be added according to rules");
+	    	*/
+	    }
+
+	protected static void layoutTextIntoColumnsOld(List<PAPhysColumn> contentFrames, 
     		List<PAPhysColumn> floatFrames, List<PAFlexObject> content)
     {
     	List<PAPhysColumn> unusedContentFrames = new ArrayList<PAPhysColumn>();
@@ -549,7 +740,15 @@ public class Publisher
     			}
     			else if (childEl.getTagName().equals("kp-glue"))
     			{
-    				// do nothing for now
+    				float amount = Float.parseFloat(childEl.getAttribute("amount"));
+    				
+    				float adjRatio = 0.0f;
+    				if (childEl.hasAttribute("adj-ratio"))
+    					adjRatio = Float.parseFloat(childEl.getAttribute("adj-ratio"));
+    				
+    				KPGlue newObj = new KPGlue(amount);
+    				newObj.setAdjRatio(adjRatio);
+    				itemList.add(newObj);
     			}
     			
     		}
@@ -684,6 +883,14 @@ public class Publisher
 	    	// just need a method to read all _character_ attributes and apply them (which can also be in the block def)
 	    	// [separate method to read all block attributes, called only at beginning; TBD later (indentations, etc.)]
 	    	
+	    	// TODO: includes the content too!
+            NodeList styles = docEl.getChildNodes();
+            //PAStylesheet stylesheet = new PAStylesheet(styles);
+            PAStylesheet stylesheet = new PAStylesheet();
+            stylesheet.addDefaultStyles();
+            stylesheet.addStyles(styles);
+            stylesheet.loadFonts(doc);
+            
 	    	// generateBoxGlueItems is where all the magic happens (char level processing)
 	    	// need to move from iteration to recursion through content
 	    	// creation of PAWord object will involve iterating through path tags
@@ -696,75 +903,32 @@ public class Publisher
             for (int i = 0; i < nl.getLength(); i++) 
             {
             	Element el = (Element) nl.item(i);
-    	    	int pageSpecID = generateID();
-    	    	el.setAttribute("id", String.valueOf(pageSpecID));
-            	
-            	PAFlexPageSpec pageSpec = new PAFlexPageSpec(
-            			(float) (210.0 * (72 / 25.4)), (float) (297.0 * (72 / 25.4)));
-            	pageSpec.setID(pageSpecID);
-            	
-	            if (el.hasAttribute("size"))
-	            {
-	            	String pageSizeString = el.getAttribute("size");
-	            	if (pageSizeString.equals("a4"))
-	            	{
-	            		// a4 is the default
-	            		// TODO: look up page sizes in dictionary
-	            	}
-	            	else if (pageSizeString.equals("a4l"))
-	            	{
-	            		pageSpec.setWidth((float)(297.0 * (72 / 25.4)));
-	            		pageSpec.setHeight((float)(210.0 * (72 / 25.4)));
-	            	}
-	            	else if (pageSizeString.equals("letter"))
-	            	{
-	            		pageSpec.setWidth((float)(8.5 * 72));
-	            		pageSpec.setHeight((float)(11.0 * 72));
-	            	}
-	            	else if (pageSizeString.equals("letterl"))
-	            	{
-	            		pageSpec.setWidth((float)(11.0 * 72));
-	            		pageSpec.setHeight((float)(8.5 * 72));
-	            	}
-	            }
+    	    	
+            	String pageLang = docLang;
+                if (el.hasAttribute("lang")) 
+                	pageLang = el.getAttribute("lang");
+                
+                // get locale object
+                Locale loc = Locale.forLanguageTag(pageLang);
 	            
-	            // TODO: replace parseFloat with parseValue method (e.g. 1in)
-	            // - currently supports only points
-	            
-	            if (el.hasAttribute("left-margin")) 
-	            	pageSpec.setLeftInsideMargin(Float.parseFloat(el.getAttribute("left-margin")));
-	            
-	            if (el.hasAttribute("right-margin")) 
-	            	pageSpec.setRightOutsideMargin(Float.parseFloat(el.getAttribute("right-margin")));
-	            
-	            if (el.hasAttribute("top-margin")) 
-	            	pageSpec.setTopMargin(Float.parseFloat(el.getAttribute("top-margin")));
-	            
-	            if (el.hasAttribute("bottom-margin")) 
-	            	pageSpec.setBottomMargin(Float.parseFloat(el.getAttribute("bottom-margin")));
-	            
-	            String pageLang = docLang;
-	            if (el.hasAttribute("lang")) 
-	            	pageLang = el.getAttribute("lang");
-	            
-	            // TODO: insert all <insert-content> first
-	            
-	            // TODO: includes the content too!
-	            NodeList styles = docEl.getChildNodes();
-	            //PAStylesheet stylesheet = new PAStylesheet(styles);
-	            PAStylesheet stylesheet = new PAStylesheet();
-	            stylesheet.addDefaultStyles();
-	            stylesheet.addStyles(styles);
-	            stylesheet.loadFonts(doc);
-	            
-	            // TODO: add main, header and footer
-	            
-	            // get locale object
-	            Locale loc = Locale.forLanguageTag(pageLang);
-	            
+                PAFlexPageSpec pageSpec = new PAFlexPageSpec(el, stylesheet, loc);
+                
+                if (el.hasAttribute("id"))
+                {
+                	int pageSpecID = Integer.parseInt(el.getAttribute("id"));
+                	pageSpec.setID(pageSpecID);
+                }
+                else
+                {
+                	int pageSpecID = generateID();
+                	// TODO: is the following line necessary? Is this rewritten?
+                	el.setAttribute("id", String.valueOf(pageSpecID));
+                	pageSpec.setID(pageSpecID);
+                }
+                
                 // call recursive method to add either structuring or content elements
 	            pageSpec.getContent().getContent().addAll(
-	            		processPageContent(el.getChildNodes(), stylesheet, doc, loc));
+	            		recProcessPageContent(el.getChildNodes(), stylesheet, doc, loc));
 	            
 	            // NB: currently the content is a PAFlexColumn. Need not be! PAFlexColumn -> mainContent
 	            //processPageContent(pageSpec, el.getChildNodes());
@@ -825,17 +989,30 @@ public class Publisher
     			
 //    			PAPhysColumn pageCol = (PAPhysColumn) ps.getItems();
     			
+        		// 2018-07-01 start with absolutely positioned elements
+        		// e.g. header and footer
+        		for (PAPhysAbsPosContainer absc : ps.getAbsItems())
+        		{
+        			Element childEl = doc.createElement("abs-pos");
+        			
+        			childEl.setAttribute("x1", String.valueOf(absc.getX1()));
+        			childEl.setAttribute("y2", String.valueOf(absc.getY2()));
+        			
+        			if (absc.getFlexID() != 0) // 0 is default value
+                		childEl.setAttribute("flex-id", String.valueOf(absc.getFlexID()));
+        			
+        			for (PAPhysObject cc : absc.getItems())
+        				cc.writeToPhysDocument(doc, childEl);
+        			
+        			pageElement.appendChild(childEl);
+        		}
+    			
     			// do not write page column as extra tag - just confuses matters
     			//recWritePhysDocument(doc, pageElement, pageCol);
-    			
-    			/*
-    			for (PAPhysObject cc : ((PAPhysColumn) pageCol).getItems())
-        			recWritePhysDocument(doc, pageElement, cc); 
-    			*/
-    			
-    			for (PAPhysObject cc : ps.getItems())
-        			recWritePhysDocument(doc, pageElement, cc); 
-    			
+        		
+        		for (PAPhysObject cc : ps.getItems())
+        			cc.writeToPhysDocument(doc, pageElement); 
+        		
     			rootElement.appendChild(pageElement);
     		}
     		
@@ -865,12 +1042,15 @@ public class Publisher
     	return null;
     }
     
+    /*
     protected static void recWritePhysDocument(Document doc, Element el, PAPhysObject o)
     {
     	// TODO: sort casting mess with object/container!!
     	// move height/width to new class
     	
     	Element childEl = null;
+    	
+    	System.out.println("writing object o: " + o);
     	
     	if (o instanceof KPGlue)
     	{
@@ -879,7 +1059,7 @@ public class Publisher
     		childEl.setAttribute("amount", String.valueOf(g.getAmount()));
     		childEl.setAttribute("adj-ratio", String.valueOf(g.getAdjRatio()));
     	}
-    	else
+    	else // o instanceof PAPhysContainer
     	{
     		PAPhysContainer c = (PAPhysContainer)o;
     		
@@ -906,9 +1086,26 @@ public class Publisher
         	{
         		childEl = doc.createElement("graphic");
         	}
-        	
+        	else if (c instanceof PAPhysHorizontalRule)
+    		{
+        		childEl = doc.createElement("hr");
+    		}
+        	else if (c instanceof PAPhysTabular)
+    		{
+        		childEl = doc.createElement("tabular");
+    		}
+    		
         	childEl.setAttribute("width", String.valueOf(c.getWidth()));
-        	childEl.setAttribute("height", String.valueOf(c.getHeight()));
+        	
+        	if (!(c instanceof PAPhysHorizontalRule))
+        	{
+        		// TODO: currently, <hr> does not have any height. Change later!
+        		childEl.setAttribute("height", String.valueOf(c.getHeight()));
+        	}
+        	
+        	// TODO: exception handling here - if writing an object fails,
+        	//       continue with rest of physical structure
+        	
         	if (c.getFlexID() != 0) // 0 is default value
         	{
         		childEl.setAttribute("flex-id", String.valueOf(c.getFlexID()));
@@ -917,6 +1114,7 @@ public class Publisher
     	
     	el.appendChild(childEl);
     }
+    */
     
     protected static int generateID()
     {
@@ -932,7 +1130,22 @@ public class Publisher
        return (int)(Math.random() * range) + min;
     }
     
-    protected static List<PAFlexObject> processPageContent(NodeList nl, PAStylesheet stylesheet, PDDocument doc, Locale loc)
+    protected static boolean isHeading(Element el)
+    {
+    	return (el.getTagName().charAt(0) == 'h' && !el.getTagName().startsWith("header"));
+    }
+    
+    protected static boolean isTextBlock(Element el)
+    {
+    	return (el.getTagName().equals("p") || isHeading(el));
+    }
+    
+    protected static boolean isTextElement(Element el)
+    {
+    	return (isTextBlock(el) || el.getTagName().equals("tt"));
+    }
+    
+    protected static List<PAFlexObject> recProcessPageContent(NodeList nl, PAStylesheet stylesheet, PDDocument doc, Locale loc)
     {
     	ArrayList<PAFlexObject> retVal = new ArrayList<PAFlexObject>();
     	
@@ -940,11 +1153,24 @@ public class Publisher
     	
     	for (int i = 0; i < nl.getLength(); i++) 
         {
+//    		if (i % 10 == 0)
+//    			System.out.print("Processing item " + i + " of " + nl.getLength() + ": ");
+    		
     		if (nl.item(i) instanceof Element)
     		{
 	        	Element el = (Element) nl.item(i);
-	        	int elID = generateID();
-	        	el.setAttribute("id", String.valueOf(elID));
+//	        	System.out.println(el);
+	        	
+	        	int elID;
+	        	if (el.hasAttribute("id"))
+	        	{
+	        		elID = Integer.parseInt(el.getAttribute("id"));
+	        	}
+	        	else
+	        	{
+		        	elID = generateID();
+		        	el.setAttribute("id", String.valueOf(elID));
+	        	}
 	        	
 	        	// TODO: set ID of all other elements, not just <fig>
 	        	// decide whether to add to constructor or not
@@ -957,20 +1183,46 @@ public class Publisher
 	        	// insert respective vertical gap
 	        	if (prevElement != null)// && nl.item(i - 1) instanceof Object)
 	        	{
-	        		float interBlockSpacing = stylesheet.getInterblockSpacing
+	        		float interBlockSpacing = stylesheet.interblockSpacing
 	        				(prevElement.getTagName(), el.getTagName());
+	        		
+	        		// add penalty if prevElement == hx
+	        		// (prevElement is not set for non-visible inline elements such as fig)
+	        		
+	        		if (isTextBlock(el))
+	        		{
+	        			if (prevElement != null && prevElement.getTagName().charAt(0) == 'h')
+	        			{
+	        				retVal.add(new KPPenalty(10000));
+	        			}
+	        		}
 	        		
 	        		if (interBlockSpacing > 0)
 	        		{
 	        			retVal.add(new KPGlue(interBlockSpacing));
+	        			
+	        			// add penalty before and after
+	        			// TODO: rules not same as for setting paragraphs
+	        			// according to K-P, enough to add penalty before glue to inhibit breaking 
+	        			if (isTextBlock(el))
+		        		{
+		        			if (prevElement != null && isHeading(prevElement))
+		        			{
+		        				retVal.add(new KPPenalty(10000));
+		        			}
+		        		}
 	        		}
 	        	}
 	        	
-	        	// if <multicol> etc. (layout level), recurse
-	        	if (el.getTagName().equals("col"))
+	        	// if <multicol> etc. (layout level), recurse#
+	        	if (el.getTagName().equals("vspace"))
+	        	{
+	        		retVal.add(new KPGlue(Float.parseFloat(el.getAttribute("amount"))));
+	        	}
+	        	else if (el.getTagName().equals("col"))
 	        	{
 	        		PAFlexColumn newObj =
-	        				new PAFlexColumn(processPageContent(el.getChildNodes(), stylesheet, doc, thisLoc));
+	        				new PAFlexColumn(recProcessPageContent(el.getChildNodes(), stylesheet, doc, thisLoc));
 	        		newObj.setID(elID);
 	        				
 	        		retVal.add(newObj);
@@ -981,29 +1233,200 @@ public class Publisher
 	        		int numCols = Integer.parseInt(el.getAttribute("num-cols"));
 	        		// TODO: flex col and flex multicol do not have consistent constructors
 	        		PAFlexMultiCol mc = new PAFlexMultiCol(numCols, PAFlexMultiCol.MCOL_EQUAL_WIDTH);
-	        		mc.getContent().addAll(processPageContent(el.getChildNodes(), stylesheet, doc, thisLoc));
+	        		mc.getContent().addAll(recProcessPageContent(el.getChildNodes(), stylesheet, doc, thisLoc));
+	        		mc.setGutterWidth(stylesheet.gutterWidth());
 	        		mc.setID(elID);
 	        		
 	        		retVal.add(mc);
 	        	}
 	        	// if <p>, <h1>, etc. (block level), add all children and don't recurse
 	        	// TODO: replace with method to lookup from stylesheet
-	        	else if (el.getTagName().equals("p") || el.getTagName().equals("h1")
-	        			|| el.getTagName().equals("h2") || el.getTagName().equals("h3")
-	        			|| el.getTagName().equals("h4") || el.getTagName().equals("h5")
-	        			|| el.getTagName().equals("h6"))
+	        	else if (isTextElement(el))
 	        	{
-	        		PAFlexParagraph newObj = new PAFlexFormattedParagraph(el, stylesheet, thisLoc);
+	        		// pass prevElement to enable first-line indents on second para, etc.
+	        		PAFlexParagraph newObj = new PAFlexFormattedParagraph(
+	        				el, stylesheet, thisLoc, prevElement);
 	        		newObj.setID(elID);
 	        		retVal.add(newObj);
+	        	}
+	        	else if (el.getTagName().equals("hr"))
+	        	{
+	        		retVal.add(new PAFlexHorizontalRule());
+	        	}
+	        	else if (el.getTagName().equals("table"))
+	        	{
+	        		// simple table has a paragraph object for each cell (<td>)
+	        		
+	        		PAFlexSimpleTable tab = new PAFlexSimpleTable();
+	        		tab.setID(elID);
+	        		if (el.hasAttribute("col-gap"))
+	        			tab.setColGap(Float.parseFloat(el.getAttribute("col-gap")));
+	        		if (el.hasAttribute("row-gap"))
+	        			tab.setRowGap(Float.parseFloat(el.getAttribute("row-gap")));
+	        		
+	        		NodeList rows = el.getElementsByTagName("tr");
+	        		
+	        		for (int j = 0; j < rows.getLength(); j ++)
+	        		{
+	        			Element rowEl = (Element)rows.item(j);
+	        			NodeList cols = rowEl.getElementsByTagName("td");
+	        			
+	        			List<PAFlexIncolObject> thisRow = 
+	        					new ArrayList<PAFlexIncolObject>();
+	        			
+	        			for (int k = 0; k < cols.getLength(); k ++)
+		        		{
+	        				Element colEl = (Element)cols.item(k);
+	        				
+	        				PAFlexParagraph newObj = new PAFlexFormattedParagraph(
+	    	        				colEl, stylesheet, thisLoc, prevElement);
+	    	        		thisRow.add(newObj);
+	    	        		
+	    	        		// make sure each col position has a width of -1
+	    	        		if (tab.getColWidths().size() < k + 1)
+	    	        			tab.getColWidths().add(-1.0f);
+		        		}
+	        			tab.getRows().add(thisRow);
+	        		}
+	        		retVal.add(tab);
+	        	}
+	        	else if (el.getTagName().equals("str-table"))
+	        	{
+	        		// str-table has a column object for each cell
+	        		
+	        		PAFlexTable tab = new PAFlexTable();
+	        		tab.setID(elID);
+	        		if (el.hasAttribute("col-gap"))
+	        			tab.setColGap(Float.parseFloat(el.getAttribute("col-gap")));
+	        		if (el.hasAttribute("row-gap"))
+	        			tab.setRowGap(Float.parseFloat(el.getAttribute("row-gap")));
+	        		if (el.hasAttribute("alignment"))
+	        		{
+	        			String val = el.getAttribute("alignment");
+	        			int alignment = PAFlexIncolObject.ALIGN_LEFT;
+	        			
+	        			if (val.equals("left"))
+						{
+							alignment = PAFlexIncolObject.ALIGN_LEFT;
+						}
+						else if (val.equals("right"))
+						{
+							alignment = PAFlexIncolObject.ALIGN_RIGHT;
+						}
+						else if (val.equals("centre") || val.equals("center"))
+						{
+							alignment = PAFlexIncolObject.ALIGN_CENTRE;
+						}
+						else if (val.equals("justify") || val.equals("justified"))
+						{
+							alignment = PAFlexIncolObject.ALIGN_JUSTIFY;
+						}
+						else if (val.equals("force-justify") || val.equals("force-justified"))
+						{
+							alignment = PAFlexIncolObject.ALIGN_FORCE_JUSTIFY;
+						}
+	        			
+						tab.setAlignment(alignment);
+	        		}
+	        			
+	        		
+	        		NodeList rows = el.getElementsByTagName("tr");
+	        		
+	        		for (int j = 0; j < rows.getLength(); j ++)
+	        		{
+	        			Element rowEl = (Element)rows.item(j);
+	        			NodeList cols = rowEl.getElementsByTagName("td");
+	        			
+	        			List<PAFlexColumn> thisRow = 
+	        					new ArrayList<PAFlexColumn>();
+	        			
+	        			for (int k = 0; k < cols.getLength(); k ++)
+		        		{
+	        				Element colEl = (Element)cols.item(k);
+	        				
+	        				PAFlexColumn newObj =
+	    	        				new PAFlexColumn(recProcessPageContent(
+	    	        				colEl.getChildNodes(), stylesheet, doc, thisLoc));
+	    	        		
+	    	        		thisRow.add(newObj);
+	    	        		
+	    	        		// make sure each col position has a width of -1
+	    	        		if (tab.getColWidths().size() < k + 1)
+	    	        			tab.getColWidths().add(-1.0f);
+		        		}
+	        			tab.getRows().add(thisRow);
+	        		}
+	        		retVal.add(tab);
+	        	}
+	        	else if (el.getTagName().equals("ul"))
+	        	{
+	        		PAFlexSimpleTable tab = new PAFlexSimpleTable();
+	        		tab.setID(elID);
+	        		if (el.hasAttribute("col-gap"))
+	        			tab.setColGap(Float.parseFloat(el.getAttribute("col-gap")));
+	        		else
+	        			tab.setColGap(4);
+	        		if (el.hasAttribute("row-gap"))
+	        			tab.setRowGap(Float.parseFloat(el.getAttribute("row-gap")));
+	        		else
+	        			tab.setRowGap(0);
+	        		
+	        		NodeList items = el.getElementsByTagName("li");
+	        		
+	        		// empty col for indentation
+	        		tab.getColWidths().add(10.0f);
+	        		
+	        		for (int j = 0; j < items.getLength(); j ++)
+	        		{
+	        			List<PAFlexIncolObject> thisRow = 
+	        					new ArrayList<PAFlexIncolObject>();
+	        			
+	        			// glue for indentation
+	        			PAFlexParagraph indentBlock = new PAFlexSimpleParagraph();
+	        			thisRow.add(indentBlock);
+	        			
+	        			// add bullet
+	        			try
+	        			{
+		                	DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
+		            		DocumentBuilder docBuilder = docFactory.newDocumentBuilder();
+		            		Document docu = docBuilder.newDocument();
+		            		Element bulletEl = docu.createElement("li");
+		            		bulletEl.setTextContent("•");
+		        					
+		        			PAFlexParagraph bulletObj = new PAFlexFormattedParagraph(
+	    	        				bulletEl, stylesheet, thisLoc, prevElement);
+		        			thisRow.add(bulletObj);
+	        			}
+	        			catch (ParserConfigurationException pce)
+	        			{
+	        				pce.printStackTrace();
+	        			}
+	        			Element itemEl = (Element)items.item(j);
+        				
+        				PAFlexParagraph newObj = new PAFlexFormattedParagraph(
+    	        				itemEl, stylesheet, thisLoc, prevElement);
+    	        		thisRow.add(newObj);
+    	        		
+    	        		// make sure each col position has a width of -1
+    	        		if (tab.getColWidths().size() < 3)
+    	        			tab.getColWidths().add(-1.0f);
+    	        		
+    	        		tab.getRows().add(thisRow);
+	        		}
+	        		retVal.add(tab);
 	        	}
 	        	else if (el.getTagName().equals("fig"))
 	        	{
 	        		PAPhysGraphic bmp = null;
 	        		try {
 		        		String graphicPath = el.getAttribute("graphic");
-		        		float width = Float.parseFloat(el.getAttribute("width"));
-	       				float height = Float.parseFloat(el.getAttribute("height"));
+		        		float width = -1;
+		        		if (el.hasAttribute("width"))
+		        			width = Float.parseFloat(el.getAttribute("width"));
+		        		float height = -1;
+		        		if (el.hasAttribute("height"))
+	       					height = Float.parseFloat(el.getAttribute("height"));
 		        		// TODO constructor that creates graphic depending on extension
 	        		
 						 bmp = new PAPhysBitmapGraphic(graphicPath, doc, width, height);
@@ -1023,13 +1446,26 @@ public class Publisher
 	        		PAFlexFigure fig = new PAFlexFigure(bmp, caption);
 	        		fig.setID(elID);
 	        		
+	        		fig.setSpacing(stylesheet.insetSpacing());
 	        		retVal.add(fig);
 	        		
+	        	}
+	        	else if (el.getTagName().equals("inset"))
+	        	{
+	        		PAFlexInset newObj =
+	        				new PAFlexInset(recProcessPageContent(el.getChildNodes(), stylesheet, doc, thisLoc));
+	        		newObj.setID(elID);
+	        		
+	        		newObj.setSpacing(stylesheet.insetSpacing());
+	        		if (el.getAttribute("position").equals("below"))
+	        			newObj.setAppearsBelow(true);
+	        		
+	        		retVal.add(newObj);
 	        	}
 	        	else if (el.getTagName().equals("span"))
 	        	{
 	        		// just recurse; any attributes have already taken effect
-	        		retVal.addAll(processPageContent(el.getChildNodes(), stylesheet, doc, thisLoc));
+	        		retVal.addAll(recProcessPageContent(el.getChildNodes(), stylesheet, doc, thisLoc));
 	        	}
 	        	else
 	        	{
@@ -1040,8 +1476,15 @@ public class Publisher
 	        	}
 	        	
 	        	// necessary to calculate spacing between block-level elements
-	        	// (span should have no effect!)
-	        	if (!el.getTagName().equals("span"))
+	        	// (span and insets should have no effect!)
+	        	if (el.getTagName().equals("span") ||
+	        			el.getTagName().equals("inset") ||
+	        			el.getTagName().equals("fig") ||
+	        			el.getTagName().equals("tt"))
+	        	{
+	        		// do not set prevElement
+	        	}
+	        	else
 	        	{
 	        		prevElement = el;
 	        	}
@@ -1232,8 +1675,8 @@ public class Publisher
 //	    	Node story = document.getElementsByTagName("story").item(0);
 	    
 	    	PAFlexPageSpec pageSpec = new PAFlexPageSpec((float) (8.25 * 72), (float) (11.75 * 72));
-	    	pageSpec.setLeftInsideMargin(72f); // 1 inch
-			pageSpec.setRightOutsideMargin(72f);
+	    	pageSpec.setLeftMargin(72f); // 1 inch
+			pageSpec.setRightMargin(72f);
 			pageSpec.setTopMargin(72f);
 			pageSpec.setBottomMargin(72f);
 			

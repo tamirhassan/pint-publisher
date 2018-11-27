@@ -42,28 +42,35 @@ public class PAFlexFigure extends PAFlexFloat
 			// TODO: centre result column!
 			innerCol.items.add(graphic);
 			innerCol.items.add(physCaption);
-			innerCol.items.add(new KPGlue(8));
+			// TODO: read glue amount from stylesheet!
+			innerCol.items.add(new KPGlue(16));
 //			innerCol.markWarning = true;
 			innerCol.height = innerCol.contentHeight();
 			innerCol.setFlexID(id); // for the time being - TODO: change to figure ID
+
+			// outerCol only for marking red box around figure!
+			// TODO: find better solution
 			
+			/*
 			PAPhysColumn outerCol = new PAPhysColumn();
 			outerCol.width = width;
 			
 			outerCol.items.add(innerCol);
 			outerCol.items.add(new KPGlue(8)); //TODO: hack
 			outerCol.height = outerCol.contentHeight();
-			outerCol.setFlexID(-1);
+//			outerCol.setFlexID(-1);
+			*/
 			
 			// TODO: check height?
-			if (outerCol.contentHeight() <= height)
+//			if (outerCol.contentHeight() <= height)
+			if (innerCol.contentHeight() <= height)
 			{
-				return new PAFlexLayoutResult(outerCol, -1, null, 
+				return new PAFlexLayoutResult(innerCol, -1, null, 
 						PAFlexLayoutResult.ESTAT_SUCCESS);
 			}
 			else
 			{
-				return new PAFlexLayoutResult(outerCol, -1, null, 
+				return new PAFlexLayoutResult(innerCol, -1, null, 
 						PAFlexLayoutResult.ESTAT_FAIL_INSUFFICIENT_HEIGHT);
 			}
 		}

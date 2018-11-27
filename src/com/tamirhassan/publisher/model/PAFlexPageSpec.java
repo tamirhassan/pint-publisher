@@ -2,10 +2,15 @@ package com.tamirhassan.publisher.model;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
-public class PAFlexPageSpec 
-							// OLD: extends PAFlexContainer 
-							// OLD: implements PACanvasSpec
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
+
+import com.tamirhassan.publisher.stylesheet.PAStylesheet;
+
+public class PAFlexPageSpec
 {
 	int id;
 	
@@ -16,14 +21,12 @@ public class PAFlexPageSpec
 	float width;
 	float height;
 
-	float leftInsideMargin;
-	float rightOutsideMargin;
-	float topMargin;
-	float bottomMargin;
+	// can be all the same if necessary
+	PAFlexMarginSpec oddMarginSpec;
+	PAFlexMarginSpec evenMarginSpec;
+	PAFlexMarginSpec firstMarginSpec;
 	
-	// TODO: header and footer
-	
-	boolean facingPages = false;
+//	boolean facingPages = false;
 
 	int startPageNo = 1; // no effect yet
 	
@@ -46,6 +49,64 @@ public class PAFlexPageSpec
 		this.width = width;
 		this.height = height;
 		this.content = content;
+	}
+	
+	public PAFlexPageSpec(Element el, PAStylesheet stylesheet, Locale loc)
+	{
+    	this.width = (float) (210.0 * (72 / 25.4));
+    	this.height = (float) (297.0 * (72 / 25.4));
+    	this.content = new PAFlexColumn();
+    	
+//    	pageSpec.setID(pageSpecID);
+    	
+        if (el.hasAttribute("size"))
+        {
+        	String pageSizeString = el.getAttribute("size");
+        	if (pageSizeString.equals("a4"))
+        	{
+        		// a4 is the default
+        		// TODO: look up page sizes in dictionary
+        	}
+        	else if (pageSizeString.equals("a4l"))
+        	{
+        		this.setWidth((float)(297.0 * (72 / 25.4)));
+        		this.setHeight((float)(210.0 * (72 / 25.4)));
+        	}
+        	else if (pageSizeString.equals("letter"))
+        	{
+        		this.setWidth((float)(8.5 * 72));
+        		this.setHeight((float)(11.0 * 72));
+        	}
+        	else if (pageSizeString.equals("letterl"))
+        	{
+        		this.setWidth((float)(11.0 * 72));
+        		this.setHeight((float)(8.5 * 72));
+        	}
+        }
+        
+        // TODO: replace parseFloat with parseValue method (e.g. 1in)
+        // - currently supports only points
+        
+        // default margins 1 inch
+        PAFlexMarginSpec ms = new PAFlexMarginSpec(72, 72, 72, 72);
+        ms.setAttributes(el, stylesheet, loc);
+        
+    	// set for odd, even and first. Copy the object to allow changes later!
+    	this.setOddMarginSpec(new PAFlexMarginSpec(ms));
+    	this.setEvenMarginSpec(new PAFlexMarginSpec(ms));
+    	this.setFirstMarginSpec(new PAFlexMarginSpec(ms));
+    	
+    	ms = this.getEvenMarginSpec();
+    	ms.setEvenAttributes(el, stylesheet, loc);
+    	
+    	ms = this.getOddMarginSpec();
+    	ms.setOddAttributes(el, stylesheet, loc);
+    	
+    	// first apply odd margins; if first page specified, will overwrite
+    	ms = this.getFirstMarginSpec();
+    	ms.setOddAttributes(el, stylesheet, loc);
+    	ms.setFirstAttributes(el, stylesheet, loc);
+    	
 	}
 	
 	public int getID() {
@@ -80,38 +141,6 @@ public class PAFlexPageSpec
 		this.height = height;
 	}
 	
-	public float getLeftInsideMargin() {
-		return leftInsideMargin;
-	}
-
-	public void setLeftInsideMargin(float leftInsideMargin) {
-		this.leftInsideMargin = leftInsideMargin;
-	}
-
-	public float getRightOutsideMargin() {
-		return rightOutsideMargin;
-	}
-
-	public void setRightOutsideMargin(float rightOutsideMargin) {
-		this.rightOutsideMargin = rightOutsideMargin;
-	}
-
-	public float getTopMargin() {
-		return topMargin;
-	}
-
-	public void setTopMargin(float topMargin) {
-		this.topMargin = topMargin;
-	}
-
-	public float getBottomMargin() {
-		return bottomMargin;
-	}
-
-	public void setBottomMargin(float bottomMargin) {
-		this.bottomMargin = bottomMargin;
-	}
-	
 	/* moved to PhysPage
 	public void render(PDPageContentStream contentStream) throws IOException
 	{
@@ -121,7 +150,47 @@ public class PAFlexPageSpec
 	}
 	*/
 	
-//	public List<PAPhysObject> layout(float width, float height, float stretchFactor)
+public int getId() {
+		return id;
+	}
+
+	public void setId(int id) {
+		this.id = id;
+	}
+
+	public PAFlexMarginSpec getOddMarginSpec() {
+		return oddMarginSpec;
+	}
+
+	public void setOddMarginSpec(PAFlexMarginSpec oddMarginSpec) {
+		this.oddMarginSpec = oddMarginSpec;
+	}
+
+	public PAFlexMarginSpec getEvenMarginSpec() {
+		return evenMarginSpec;
+	}
+
+	public void setEvenMarginSpec(PAFlexMarginSpec evenMarginSpec) {
+		this.evenMarginSpec = evenMarginSpec;
+	}
+
+	public PAFlexMarginSpec getFirstMarginSpec() {
+		return firstMarginSpec;
+	}
+
+	public void setFirstMarginSpec(PAFlexMarginSpec firstMarginSpec) {
+		this.firstMarginSpec = firstMarginSpec;
+	}
+
+	public int getStartPageNo() {
+		return startPageNo;
+	}
+
+	public void setStartPageNo(int startPageNo) {
+		this.startPageNo = startPageNo;
+	}
+
+	//	public List<PAPhysObject> layout(float width, float height, float stretchFactor)
 	/**
 	 * currently limited to only one layout
 	 */
@@ -131,8 +200,10 @@ public class PAFlexPageSpec
 		
 		//PAFlexColumn mainContentCol = new PAFlexColumn(content);
 		
-		float contentWidth = this.width - leftInsideMargin - rightOutsideMargin;
+		/*
+		float contentWidth = this.width - leftMargin - rightMargin;
 		float contentHeight = this.height - topMargin - bottomMargin;
+		*/
 		
 		// to begin with, set remainingContent = content
 		PAFlexObject remainingContent = content; // = (PAFlexContainer) mainContentCol;
@@ -144,20 +215,66 @@ public class PAFlexPageSpec
 			// && remainingContent.getContent().size() > 0)
 			// no more empty remainingContent being returned
 		{
+			index ++;
+			
+			PAFlexMarginSpec ms;
+			if (index == startPageNo)
+			{
+				// first
+				ms = firstMarginSpec;
+			}
+			else if (index % 2 == 0)
+			{
+				// even
+				ms = evenMarginSpec;
+			}
+			else
+			{
+				// odd
+				ms = oddMarginSpec;
+			}
+			
+			float contentWidth = this.width - ms.leftMargin - ms.rightMargin;
+			float contentHeight = this.height - ms.topMargin - ms.bottomMargin;
 			
 			PAPhysPage newPage = new PAPhysPage (this.width, this.height,
-					leftInsideMargin, rightOutsideMargin, topMargin, bottomMargin);
+					ms.leftMargin, ms.rightMargin, ms.topMargin, ms.bottomMargin);
 			
-			index ++;
+			// add header (and TODO: footer)
+			if (ms.headerLeft != null)
+			{
+				PAFlexLayoutResult layoutRes = ms.headerLeft.layout(width);
+				PAPhysAbsPosContainer c = new PAPhysAbsPosContainer(ms.leftMargin, 
+						30 + height - ms.topMargin);
+				c.items.add(layoutRes.getResult());
+				c.setFlexID(ms.headerLeft.id);
+				newPage.absItems.add(c);
+			}
+			if (ms.headerRight != null)
+			{
+				PAFlexLayoutResult layoutRes = ms.headerRight.layout(width);
+				PAPhysTextBlock tb = (PAPhysTextBlock)layoutRes.getResult();
+				float lineWidth = tb.contentWidth();
+				PAPhysAbsPosContainer c = new PAPhysAbsPosContainer(
+						width - ms.rightMargin - lineWidth - 12, 
+						30 + height - ms.topMargin);
+				c.items.add(layoutRes.getResult());
+				c.setFlexID(ms.headerRight.id);
+				newPage.absItems.add(c);
+			}
+						
 			newPage.setPageNo(index);
 			newPage.setFlexID(id); // TODO: allow null values
 			
 			// casting is legitimate as remaining content must be of same type (PAFlexColumn extends PAFlexContainer)
-			PAFlexLayoutResult layoutRes = ((PAFlexContainer) remainingContent).layout(contentWidth, contentHeight);
+			PAFlexLayoutResult layoutRes = ((PAFlexContainer) remainingContent)
+					.layout(contentWidth, contentHeight);
 
 			PAPhysContainer resObj = layoutRes.getResult();
 //			resObj.setHeight(this.height); // otherwise zero - now done in calling method
 			newPage.getItems().add(layoutRes.getResult());
+			
+			System.out.println("adding new page");
 			
 			retVal.add(newPage);
 			
@@ -171,7 +288,7 @@ public class PAFlexPageSpec
 	public String textContent()
 	{
 		// TODO
-		System.err.println("PAPage.toText() not yet implemented");
-		return "";
+//		System.err.println("PAPage.toText() not yet implemented");
+		return "PAFlexPageSpec";
 	}
 }

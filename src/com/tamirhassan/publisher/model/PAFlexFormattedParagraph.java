@@ -5,12 +5,15 @@ import java.util.List;
 import java.util.Locale;
 
 import org.w3c.dom.Element;
+import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
+import com.tamirhassan.publisher.knuthplass.KPEmptyBox;
 import com.tamirhassan.publisher.knuthplass.KPGlue;
 import com.tamirhassan.publisher.knuthplass.KPItem;
 import com.tamirhassan.publisher.knuthplass.KPPenalty;
+import com.tamirhassan.publisher.knuthplass.PAKPTextBlock;
 import com.tamirhassan.publisher.stylesheet.PACharFormatting;
 import com.tamirhassan.publisher.stylesheet.PAStylesheet;
 
@@ -50,16 +53,42 @@ public class PAFlexFormattedParagraph extends PAFlexParagraph //PAKPTextBlock
 	// String content;
 	Element content;
 	PAStylesheet stylesheet;
+	boolean firstPara = false;
 	
 	public PAFlexFormattedParagraph()
 	{
 	}
 
-	public PAFlexFormattedParagraph(Element content, PAStylesheet stylesheet, Locale locale)
+	public PAFlexFormattedParagraph(Element content, PAStylesheet stylesheet, Locale locale,
+			Element prevItem)
 	{
 		this.content = content;
 		this.stylesheet = stylesheet;
 		this.locale = locale;
+		
+		if (prevItem != null)
+		{
+			if (content.getTagName().equals(prevItem.getTagName()))
+			{
+				firstPara = false;
+			}
+			else
+			{
+				firstPara = true;
+			}
+		}
+		
+		// assign block-level styles
+//		setAlignment(stylesheet.alignment(content));
+		stylesheet.setBlockAttributes(this);
+		
+//		this.setAlignment(ALIGN_LEFT);
+//		this.hyphenate = false;
+	}
+	
+	public PAFlexFormattedParagraph(Element content, PAStylesheet stylesheet, Locale locale)
+	{
+		this(content, stylesheet, locale, null);
 	}
 	
 	public Element getContent() {
@@ -84,6 +113,14 @@ public class PAFlexFormattedParagraph extends PAFlexParagraph //PAKPTextBlock
 
 	public void setStylesheet(PAStylesheet stylesheet) {
 		this.stylesheet = stylesheet;
+	}
+
+	public boolean isFirstPara() {
+		return firstPara;
+	}
+
+	public void setFirstPara(boolean firstPara) {
+		this.firstPara = firstPara;
 	}
 
 	public String textContent()
@@ -132,13 +169,31 @@ public class PAFlexFormattedParagraph extends PAFlexParagraph //PAKPTextBlock
 	        	}
 	        	
 	        	// TODO: check if any block-level or other illegal elements here
-				
-	        	// copy tag list to ensure that it remains unaltered
-	        	List<String> childTagList = new ArrayList<String>();
-	        	childTagList.addAll(tagList);
-	        	
-	        	// recurse; checking against stylesheet is done later
-				addBoxGlueItems(stretchFactor, childEl, childTagList, thisLoc, level + 1);
+	        	else if (childEl.getTagName().trim().equals("br"))
+	        	{
+	        		// (not in K-P) break to inhibit breaking before finishing glue
+	    			boxGlueItems.add(new KPPenalty(+100000));
+	    			
+	    			// add finishing glue (K-P p. 1124 PDF 6)
+	    			boxGlueItems.add(new KPGlue(0, 100000, 0));
+	    			
+	    			// add finishing penalty of -inf (K-P p. 1124 PDF 6)
+	    			// TODO: flag this penalty? then we need to take care when fixing hyphens
+	    			boxGlueItems.add(new KPPenalty(-100000));
+	        	}
+	        	else if (childEl.getTagName().trim().equals("hspace"))
+	        	{
+	    			boxGlueItems.add(new KPGlue(12, 0, 0));
+	        	}
+	        	else
+	        	{
+		        	// copy tag list to ensure that it remains unaltered
+		        	List<String> childTagList = new ArrayList<String>();
+		        	childTagList.addAll(tagList);
+		        	
+		        	// recurse; checking against stylesheet is done later
+					addBoxGlueItems(stretchFactor, childEl, childTagList, thisLoc, level + 1);
+	        	}
     		}
 			else if (nl.item(i).getNodeType() == 3) // text node
 			{
@@ -193,17 +248,23 @@ public class PAFlexFormattedParagraph extends PAFlexParagraph //PAKPTextBlock
 					PACharFormatting cf = stylesheet.charFormatting(tagList);
 					
 					float spaceWidth = cf.getCharWidth(' ') * 
-							(cf.getFontSize() / 1000) * stretchFactor;
+							(cf.getFontSize() / 1000.0f) * stretchFactor;
 					
+					// 2018-06-26: no preservation of leading and trailing spaces as these are
+					// only at beginning or end of paragraph (and not e.g. at line breaks)
 					if (spaceBefore)
-						boxGlueItems.add(new KPGlue(spaceWidth, spaceWidth/2, spaceWidth/3));
+					{
+						boxGlueItems.add(new KPGlue(spaceWidth, spaceWidth/2, spaceWidth/3, true));
+//						addSpace(spaceWidth);
+					}
 					
 					for (int j = 0; j < words.length; j ++)
 					{
 						// preserve leading/trailing spaces (which lead to empty strings) here
 						if (j > 0) // || words[j].isEmpty())
 							// add a space as glue
-							boxGlueItems.add(new KPGlue(spaceWidth, spaceWidth/2, spaceWidth/3));
+							boxGlueItems.add(new KPGlue(spaceWidth, spaceWidth/2, spaceWidth/3, true));
+//							addSpace(spaceWidth);
 						
 						if (!(words[j].isEmpty()))
 						{
@@ -213,13 +274,18 @@ public class PAFlexFormattedParagraph extends PAFlexParagraph //PAKPTextBlock
 			            	System.out.println("subStringWidth: " + words[j] + ": " + subStringWidth);
 							PAWord w = new PAWord(words[j], cf, subStringWidth, cf.getFontSize());
 							boxGlueItems.add(w);
-							System.out.println("word: " + words[j]);
+//							System.out.println("word: " + words[j]);
 						}
 						
 					}
 					
+					// 2018-06-26: no preservation of leading and trailing spaces as these are
+					// only at beginning or end of paragraph (and not e.g. at line breaks)
 					if (spaceAfter)
-						boxGlueItems.add(new KPGlue(spaceWidth, spaceWidth/2, spaceWidth/3));
+					{
+						boxGlueItems.add(new KPGlue(spaceWidth, spaceWidth/2, spaceWidth/3, true));
+//						addSpace(spaceWidth);
+					}
 				}
 			}
 			else
@@ -291,6 +357,7 @@ public class PAFlexFormattedParagraph extends PAFlexParagraph //PAKPTextBlock
 		}
 	}
 	
+
 	/**
 	 * creates a low-level box-glue representation of the paragraph
 	 * 
@@ -306,12 +373,94 @@ public class PAFlexFormattedParagraph extends PAFlexParagraph //PAKPTextBlock
 		
 		// create tagList with first tag for recursion
 		ArrayList<String> tagList = new ArrayList<String>();
+
+		// necessary for centred text
+		PACharFormatting cf = stylesheet.charFormatting(tagList);
+		float spaceWidth = cf.getCharWidth(' ') * 
+				(cf.getFontSize() / 1000) * stretchFactor;
 		
 		addBoxGlueItems(stretchFactor, content, tagList, locale, 1);
-		correctBlockLevelSpacing();
+		
+		// remove spacing (due to whitespace characters) at beginning and end
+		while (boxGlueItems.size() > 0 && boxGlueItems.get(0) instanceof KPGlue
+				&& ((KPGlue)boxGlueItems.get(0)).isSpace())
+		{
+			boxGlueItems.remove(0);
+		}
+		
+		while(boxGlueItems.size() > 0 && boxGlueItems.get(boxGlueItems.size() - 1) instanceof KPGlue
+				&& ((KPGlue)boxGlueItems.get(boxGlueItems.size () -1)).isSpace())
+		{
+			boxGlueItems.remove(boxGlueItems.size () -1);
+		}
+		
+		// replace space with correct type of space
+		ArrayList<KPItem> boxGlueItemsTemp = new ArrayList<KPItem>();
+		for (KPItem i : boxGlueItems)
+		{
+			if (i instanceof KPGlue)
+			{
+				if (((KPGlue)i).isSpace())
+				{
+					float sw = i.getAmount();
+					
+					if (getAlignment() == ALIGN_LEFT || getAlignment() == ALIGN_CENTRE ||
+							getAlignment() == ALIGN_RIGHT)
+					{
+						// K-P p. 1139 PDF 21 w=0, y=18, z=0
+						boxGlueItemsTemp.add(new KPGlue(0, sw * 3.0f, 0));
+						boxGlueItemsTemp.add(new KPPenalty(0));
+						boxGlueItemsTemp.add(new KPGlue(sw, sw * -3.0f, 0));
+					}
+					else if (getAlignment() == ALIGN_CENTRE_KNUTH)
+					{
+						// K-P p. 1140 PDF 22 w=0, y=18, z=0
+						boxGlueItemsTemp.add(new KPGlue(0, sw * 3.0f, 0));
+						boxGlueItemsTemp.add(new KPPenalty(0));
+						// K-P p. 1140 PDF 22 w=0, y=-36, z=0
+						boxGlueItemsTemp.add(new KPGlue(sw, sw * -6.0f, 0));
+						boxGlueItemsTemp.add(new KPEmptyBox(0));
+						boxGlueItemsTemp.add(new KPPenalty(10000, new KPEmptyBox(0), false));
+						boxGlueItemsTemp.add(new KPGlue(0, sw * 3.0f, 0));
+					}
+					else // ALIGN_JUSTIFY or ALIGN_FORCE_JUSTIFY
+					{
+						// K-P p. 1124 PDF 6 w=6, y=3, z=2
+						boxGlueItemsTemp.add(i);
+					}
+				}
+				else
+				{
+					boxGlueItemsTemp.add(i);
+				}
+			}
+			else
+			{
+				boxGlueItemsTemp.add(i);
+			}
+		}
+		
+		boxGlueItems.clear();
+		
+		// add at beginning; before indent if applicable
+		if (getAlignment() == ALIGN_CENTRE_KNUTH)
+		{
+			// not mentioned in K-P, but otherwise starting glue disappears!
+			boxGlueItems.add(new KPEmptyBox(0));
+			// (K-P p. 1120 PDF 22)
+			boxGlueItems.add(new KPGlue(0, spaceWidth * 3, 0));
+		}
+		
+		// add at beginning
+		if (getFirstLineIndent() != 0.0f)
+		{
+			boxGlueItems.add(new KPEmptyBox(0));
+			boxGlueItems.add(new KPGlue(getFirstLineIndent(), 0, 0));
+		}
+
+		boxGlueItems.addAll(boxGlueItemsTemp);
 		
 		// finishing glue, etc.
-		
 		if (getAlignment() == ALIGN_FORCE_JUSTIFY)
 		{
 			// add finishing glue (K-P p. 1124 PDF 6)
@@ -320,7 +469,15 @@ public class PAFlexFormattedParagraph extends PAFlexParagraph //PAKPTextBlock
 			// add finishing penalty of -inf (K-P p. 1124 PDF 6)
 			boxGlueItems.add(new KPPenalty(-100000));
 		}
-		else // ALIGN_JUSTIFY
+		else if (getAlignment() == ALIGN_CENTRE_KNUTH)
+		{
+			// (K-P p. 1120 PDF 22)
+			boxGlueItems.add(new KPGlue(0, spaceWidth * 3, 0));
+			
+			// add finishing penalty of -inf (K-P p. 1124 PDF 6)
+			boxGlueItems.add(new KPPenalty(-100000));
+		}
+		else // ALIGN_JUSTIFY or ALIGN_CENTRE or ALIGN_LEFT or ALIGN_RIGHT
 		{
 			// (not in K-P) break to inhibit breaking before finishing glue
 			boxGlueItems.add(new KPPenalty(+100000));
@@ -331,5 +488,11 @@ public class PAFlexFormattedParagraph extends PAFlexParagraph //PAKPTextBlock
 			// add finishing penalty of -inf (K-P p. 1124 PDF 6)
 			boxGlueItems.add(new KPPenalty(-100000));
 		}
+		
+		int dummyy=0;
+		
+//		removed 2018-06-22 -> multiple spaces are ok at the moment
+//		method needs rewriting to ensure leading and trailing glue is preserved (centred, left alignment)
+//		correctBlockLevelSpacing();
 	}
 }

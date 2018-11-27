@@ -10,6 +10,8 @@ import au.id.pbw.hyfo.hyph.HyphenatedWord;
 import au.id.pbw.hyfo.hyph.HyphenationTree;
 import au.id.pbw.hyfo.hyph.HyphenationTreeCache;
 
+import com.tamirhassan.publisher.knuthplass.KPEmptyBox;
+import com.tamirhassan.publisher.knuthplass.KPGlue;
 import com.tamirhassan.publisher.knuthplass.KPItem;
 import com.tamirhassan.publisher.knuthplass.KPPenalty;
 import com.tamirhassan.publisher.knuthplass.PAKPTextBlock;
@@ -63,6 +65,62 @@ public abstract class PAFlexParagraph extends PAKPTextBlock
 		this.hyphenationChar = hyphenationChar;
 	}
 	
+	/**
+	 * no longer used by PAFlexFormattedParagraph as method is more complicated
+	 * requiring removal of leading and trailing spaces afterwards
+	 * 
+	 * @param spaceWidth
+	 */
+	protected void addSpace(float spaceWidth)
+	{
+		if (getAlignment() == ALIGN_LEFT || getAlignment() == ALIGN_CENTRE ||
+				getAlignment() == ALIGN_RIGHT)
+		{
+			// K-P p. 1139 PDF 21 w=0, y=18, z=0
+			boxGlueItems.add(new KPGlue(0, spaceWidth * 3.0f, 0));
+			boxGlueItems.add(new KPPenalty(0));
+			boxGlueItems.add(new KPGlue(spaceWidth, spaceWidth * -3.0f, 0));
+		}
+		else if (getAlignment() == ALIGN_CENTRE_KNUTH)
+		{
+			// K-P p. 1140 PDF 22 w=0, y=18, z=0
+			boxGlueItems.add(new KPGlue(0, spaceWidth * 3.0f, 0));
+			boxGlueItems.add(new KPPenalty(0));
+			// K-P p. 1140 PDF 22 w=0, y=-36, z=0
+			boxGlueItems.add(new KPGlue(spaceWidth, spaceWidth * -6.0f, 0));
+			boxGlueItems.add(new KPEmptyBox(0));
+			boxGlueItems.add(new KPPenalty(10000, new KPEmptyBox(0), false));
+			boxGlueItems.add(new KPGlue(0, spaceWidth * 3.0f, 0));
+		}
+		else // ALIGN_JUSTIFY or ALIGN_FORCE_JUSTIFY
+		{
+			// K-P p. 1124 PDF 6 w=6, y=3, z=2
+			boxGlueItems.add(new KPGlue(spaceWidth, spaceWidth/2, spaceWidth/3));
+		}
+	}
+	
+	protected Object[] processHyphenatedWord(String thisWord, String hyphenationChar)
+	{
+		Object[] retVal = new Object[thisWord.length()];
+		for (int i = 0; i < retVal.length; i ++)
+			retVal[i] = null;
+			
+		String[] parts = thisWord.split(hyphenationChar);
+		
+		if (parts.length > 1)
+		{
+			int sum = -1;
+			for (int i = 0; i < parts.length - 1; i ++)
+			{
+				sum += 1; // for the hyphen
+				sum += parts[i].length();
+				retVal[sum] = new KPEmptyBox(0);
+			}
+		}
+		
+		return retVal;
+	}
+	
 	public void hyphenate(HyphenationTree hyphenTree, String hyphenationChar)
 	{
 		List<KPItem> newItems = new ArrayList<KPItem>();
@@ -103,20 +161,40 @@ public abstract class PAFlexParagraph extends PAKPTextBlock
 				}
 				
 				//System.out.println("thisWord.getText(): " + thisWord.getText());
-				HyphenatedWord hyph_word =
-		                hyphenTree.hyphenate(thisWord.getText());
-		        HyphenBreak[] breaks = hyph_word.get_string_breakpoints();
-		        
-		        // breaks[] is an array with the length of the substring
+				
+				// TODO: change to array of int. >0 is break, equal to weight. Easier to read.
+				Object[] breaks; 
+				
+				if (hyphenTree != null)
+				{
+					HyphenatedWord hyph_word =
+			                hyphenTree.hyphenate(thisWord.getText());
+			        HyphenBreak[] breakpoints = hyph_word.get_string_breakpoints();
+			        
+			        breaks = new Object[breakpoints.length];
+			        for (int i = 0; i < breakpoints.length; i ++)
+			        	breaks[i] = breakpoints[i];
+				}
+				else
+				{
+					breaks = processHyphenatedWord(thisWord.getText(), hyphenationChar);
+				}
+				
+		        // breakpoints[] is an array with the length of the substring
 		        // each position contains either null (no break)
 		        // or a HyphenBreak object (hyphenate after this character)
 		        
+				// 2018-06-28: array changed to type Object
+				// to allow processing of hyphenated words (not via hyfo)
+				
 //		        System.out.println();
 //		        System.out.print("hyphenating " + thisWord.getText() + ": ");
 		        
 		        int prevBreak = -1;
 		        for (int j = 0; j < breaks.length; j++) 
 		        {
+		        	// if there is a valid break at this position, the break object is not null
+		        	// TODO: take weights into account (later)
 		            if (breaks[j] != null) 
 		            {
 		            	// hyphenbreak at j=2
@@ -173,8 +251,40 @@ public abstract class PAFlexParagraph extends PAKPTextBlock
 		            	PAWord w = new PAWord(subString, cf, subStringWidth, cf.getFontSize());
 						newItems.add(w);
 //							System.out.println("position " + (retVal.size() - 1) + " box with " + subString);
+						
 						// add hyphenation penalty
-						newItems.add(new KPPenalty(50, hyphenationWord, true));
+						if (getAlignment() == ALIGN_LEFT || getAlignment() == ALIGN_CENTRE
+								|| getAlignment() == ALIGN_RIGHT)
+						{
+							// TODO: what about stretchFactor?
+							float spaceWidth = cf.getCharWidth(' ') * 
+									(cf.getFontSize() / 1000);// * stretchFactor;
+							
+							if (hyphenTree != null)
+							{
+								newItems.add(new KPPenalty(10000));
+								newItems.add(new KPGlue(0, spaceWidth * 3, 0));
+								newItems.add(new KPPenalty(500, hyphenationWord, true));
+								newItems.add(new KPGlue(0, spaceWidth * -3, 0));
+							}
+							else
+							{
+								newItems.add(new KPPenalty(10000));
+								newItems.add(new KPGlue(0, spaceWidth * 3, 0));
+								// 2018-06-28: using a null empty box causes spacing problems
+//								newItems.add(new KPPenalty(500, null, true));
+								newItems.add(new KPPenalty(500, new KPEmptyBox(0), true));
+								newItems.add(new KPGlue(0, spaceWidth * -3, 0));
+							}
+						}
+						else // ALIGN_JUSTIFY or ALIGN_FORCE_JUSTIFY
+						{
+							if (hyphenTree != null)
+								newItems.add(new KPPenalty(50, hyphenationWord, true));
+							else
+								newItems.add(new KPPenalty(50, null, true));
+						}
+						
 //							System.out.println("position " + (retVal.size() - 1) + " hyph penalty");
 		            }
 		        }
@@ -211,6 +321,10 @@ public abstract class PAFlexParagraph extends PAKPTextBlock
 		
 //		System.out.println("boxGlue items");
 //		ListUtils.printList(boxGlueText.getItems());
+		
+		// 2018-06-28: first, insert penalties for hyphenated words
+		// regardless of whether hyphenation is carried out
+		hyphenate(null, hyphenationChar);
 		
 		if (hyphenate)
 		{
