@@ -1,0 +1,217 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<phys-doc>
+  <page bottom-margin="82.0" height="792.0" left-margin="54.0" right-margin="54.0" top-margin="65.0" width="612.0">
+    <phys-col flex-id="684228" height="645.0" width="504.0">
+      <kp-glue adj-ratio="0.0" amount="6.0"/>
+      <text-block flex-id="2703974" height="21.0" width="467.30246">com.tamirhassan.publisher.model.PAPhysTextBlock:  Towards  a  Uni  ver  sal  ly  Editable  Portable  Doc  u  ment  For  mat </text-block>
+      <kp-glue adj-ratio="0.0" amount="9.0"/>
+      <text-block flex-id="5875959" height="14.400001" width="68.436">com.tamirhassan.publisher.model.PAPhysTextBlock:  Tamir  Has  san </text-block>
+      <text-block flex-id="12765302" height="12.0" width="107.82999">com.tamirhassan.publisher.model.PAPhysTextBlock:  Round-  Trip  PDF  Solu  tions </text-block>
+      <text-block flex-id="6734302" height="12.0" width="64.13">com.tamirhassan.publisher.model.PAPhysTextBlock:  Vienna,  Aus  tria </text-block>
+      <text-block flex-id="7369027" height="12.0" width="103.11">com.tamirhassan.publisher.model.PAPhysTextBlock:  tamir@roundtrippdf.com </text-block>
+      <kp-glue adj-ratio="0.0" amount="9.0"/>
+      <horiz-seq flex-id="5945455" height="539.68" width="0.0">
+        <phys-col height="0.0" width="241.0">
+          <phys-col flex-id="5945455" height="442.19995" width="241.0">
+            <text-block flex-id="8502731" height="13.200001" width="59.003998">com.tamirhassan.publisher.model.PAPhysTextBlock: ABSTRACT </text-block>
+            <kp-glue adj-ratio="0.0" amount="3.0"/>
+            <text-block flex-id="11793077" height="96.12" width="241.0">com.tamirhassan.publisher.model.PAPhysTextBlock: PDF is the established format for the exchange of final-form print- ...</text-block>
+            <text-block flex-id="16005332" height="106.8" width="241.0">com.tamirhassan.publisher.model.PAPhysTextBlock:  This position paper describes how we can engineer such an ...</text-block>
+            <text-block flex-id="2971163" height="42.72" width="240.99998">com.tamirhassan.publisher.model.PAPhysTextBlock:  After defining our goals, we propose a framework for creating ...</text-block>
+            <kp-glue adj-ratio="0.0" amount="8.0"/>
+            <text-block flex-id="16105521" height="13.200001" width="81.642">com.tamirhassan.publisher.model.PAPhysTextBlock: CCS  CON  CEPTS </text-block>
+            <kp-glue adj-ratio="0.0" amount="3.0"/>
+            <text-block flex-id="16544273" height="21.36" width="241.0">com.tamirhassan.publisher.model.PAPhysTextBlock: •  Applied computing  →  Document preparation; •  Human- ...</text-block>
+            <kp-glue adj-ratio="0.0" amount="8.0"/>
+            <text-block flex-id="1831089" height="13.200001" width="62.106003">com.tamirhassan.publisher.model.PAPhysTextBlock: KEY  WORDS </text-block>
+            <kp-glue adj-ratio="0.0" amount="3.0"/>
+            <text-block flex-id="5086677" height="10.68" width="233.6789">com.tamirhassan.publisher.model.PAPhysTextBlock: Document formats, PDF, layout optimization, interactive editing </text-block>
+            <kp-glue adj-ratio="0.0" amount="6.0"/>
+            <text-block flex-id="14404417" height="9.6" width="87.459076">com.tamirhassan.publisher.model.PAPhysTextBlock: ACM Reference Format: </text-block>
+            <text-block flex-id="7040395" height="38.4" width="241.0">com.tamirhassan.publisher.model.PAPhysTextBlock: Tamir Hassan. 2018. Towards a Universally Editable Portable Document ...</text-block>
+            <kp-glue adj-ratio="0.0" amount="6.0"/>
+          </phys-col>
+          <kp-glue adj-ratio="0.0" amount="14.0"/>
+          <phys-col flex-id="8982011" height="93.40001" width="241.0">
+            <text-block flex-id="3047677" height="0.0" width="0.0">com.tamirhassan.publisher.model.PAPhysTextBlock: empty</text-block>
+            <kp-glue adj-ratio="0.0" amount="1.0"/>
+            <text-block flex-id="14361654" height="58.800007" width="241.0">com.tamirhassan.publisher.model.PAPhysTextBlock: Permission to make digital or hard copies of part or all of this work for personal or ...</text-block>
+            <text-block flex-id="3535026" height="8.400001" width="147.94371">com.tamirhassan.publisher.model.PAPhysTextBlock: DocEng ’18, August 28–31, 2018, Halifax, NS, Canada </text-block>
+            <text-block flex-id="12729548" height="8.400001" width="241.0">com.tamirhassan.publisher.model.PAPhysTextBlock: © 2018 Copyright is held by the owner/author(s). Publication rights licensed to ACM. </text-block>
+            <text-block flex-id="1426494" height="8.400001" width="109.39015">com.tamirhassan.publisher.model.PAPhysTextBlock: ACM 978-1-4503-5769-2/18/08…$15.00 </text-block>
+            <text-block flex-id="14304803" height="8.400001" width="113.568">com.tamirhassan.publisher.model.PAPhysTextBlock: https://doi.org/10.1145/3209280.3229083 </text-block>
+          </phys-col>
+        </phys-col>
+        <kp-glue adj-ratio="0.0" amount="22.0"/>
+        <phys-col flex-id="5945455" height="549.6" width="241.0">
+          <kp-glue adj-ratio="0.0" amount="8.0"/>
+          <text-block flex-id="5908192" height="13.200001" width="104.18">com.tamirhassan.publisher.model.PAPhysTextBlock: 1 INTRO  DUC  TION </text-block>
+          <kp-glue adj-ratio="0.0" amount="3.0"/>
+          <text-block flex-id="6783931" height="85.44" width="241.0">com.tamirhassan.publisher.model.PAPhysTextBlock: PDFs are unique in their ability to preserve the visual presenta- ...</text-block>
+          <text-block flex-id="9551341" height="96.12" width="241.0">com.tamirhassan.publisher.model.PAPhysTextBlock:  However, this is also PDF’s main drawback, and this remains ...</text-block>
+          <text-block flex-id="15296834" height="96.12" width="241.0">com.tamirhassan.publisher.model.PAPhysTextBlock:  This paper proposes a framework to tackle this problem, work- ...</text-block>
+          <text-block flex-id="13227669" height="53.4" width="241.0">com.tamirhassan.publisher.model.PAPhysTextBlock:  Section 2 presents the proposed framework and the underly- ...</text-block>
+          <kp-glue adj-ratio="0.0" amount="8.0"/>
+          <text-block flex-id="10527605" height="13.200001" width="159.675">com.tamirhassan.publisher.model.PAPhysTextBlock: 1.1 Editabil  i  ty  of  cur  rent  PDFs </text-block>
+          <kp-glue adj-ratio="0.0" amount="3.0"/>
+          <text-block flex-id="2774765" height="96.12" width="241.0">com.tamirhassan.publisher.model.PAPhysTextBlock: A born-digital PDF that has been generated directly from the source ...</text-block>
+          <text-block flex-id="1374034" height="64.08" width="241.0">com.tamirhassan.publisher.model.PAPhysTextBlock:  Currently, editing a previously generated PDF is generally seen ...</text-block>
+        </phys-col>
+      </horiz-seq>
+    </phys-col>
+  </page>
+  <page bottom-margin="82.0" height="792.0" left-margin="54.0" right-margin="54.0" top-margin="82.0" width="612.0">
+    <abs-pos x1="54.0" y2="740.0">
+      <text-block height="10.8" width="196.18776">com.tamirhassan.publisher.model.PAPhysTextBlock: DocEng ’18, August 28–31, 2018, Halifax, NS, Canada </text-block>
+    </abs-pos>
+    <abs-pos x1="494.5857" y2="740.0">
+      <text-block height="10.8" width="51.414303">com.tamirhassan.publisher.model.PAPhysTextBlock: Tamir Hassan </text-block>
+    </abs-pos>
+    <phys-col flex-id="684228" height="628.0" width="504.0">
+      <horiz-seq flex-id="5945455" height="625.12006" width="0.0">
+        <phys-col flex-id="5945455" height="628.0" width="241.0">
+          <text-block height="21.36" width="241.0">com.tamirhassan.publisher.model.PAPhysTextBlock: and items to move to the next page if necessary. This structure is ...</text-block>
+          <text-block flex-id="16234603" height="106.8" width="241.0">com.tamirhassan.publisher.model.PAPhysTextBlock:  If the document’s logical structure is known in sufficient detail, ...</text-block>
+          <kp-glue adj-ratio="0.0" amount="8.0"/>
+          <text-block flex-id="11215966" height="13.200001" width="203.444">com.tamirhassan.publisher.model.PAPhysTextBlock: 1.2 Oth  er  notable  devel  op  ments  in  PDF </text-block>
+          <kp-glue adj-ratio="0.0" amount="3.0"/>
+          <text-block flex-id="14487591" height="149.51999" width="241.0">com.tamirhassan.publisher.model.PAPhysTextBlock: Since its initial release in 1993, there have been several develop- ...</text-block>
+          <text-block flex-id="11173633" height="138.84" width="241.0">com.tamirhassan.publisher.model.PAPhysTextBlock:  PDF has always been a container format, allowing embedding of ...</text-block>
+          <kp-glue adj-ratio="0.0" amount="8.0"/>
+          <text-block flex-id="5344150" height="13.200001" width="138.929">com.tamirhassan.publisher.model.PAPhysTextBlock: 1.3 Oth  er  editable  for  mats </text-block>
+          <kp-glue adj-ratio="0.0" amount="3.0"/>
+          <text-block flex-id="15320132" height="96.12" width="241.0">com.tamirhassan.publisher.model.PAPhysTextBlock: Applications commonly used to author complete documents ...</text-block>
+          <text-block flex-id="6950549" height="64.08" width="241.0">com.tamirhassan.publisher.model.PAPhysTextBlock:  Text content, on the other hand, is implicitly laid out: the ...</text-block>
+        </phys-col>
+        <kp-glue adj-ratio="0.0" amount="22.0"/>
+        <phys-col flex-id="5945455" height="628.0" width="241.0">
+          <text-block flex-id="8058986" height="149.51999" width="241.0">com.tamirhassan.publisher.model.PAPhysTextBlock:  There are also a number of non-WYSIWYG typesetting systems ...</text-block>
+          <kp-glue adj-ratio="0.0" amount="8.0"/>
+          <text-block flex-id="13306355" height="13.200001" width="121.054">com.tamirhassan.publisher.model.PAPhysTextBlock: 1.4 Prob  lem  def  i  n  i  tion </text-block>
+          <kp-glue adj-ratio="0.0" amount="3.0"/>
+          <text-block flex-id="10171946" height="64.08" width="241.0">com.tamirhassan.publisher.model.PAPhysTextBlock: The previous subsections have summarized the variety of formats ...</text-block>
+          <kp-glue adj-ratio="0.0" amount="6.0"/>
+          <tabular flex-id="7761881" height="128.16" width="245.0"/>
+          <kp-glue adj-ratio="0.0" amount="6.0"/>
+          <text-block flex-id="7171231" height="42.72" width="241.0">com.tamirhassan.publisher.model.PAPhysTextBlock: It is worth noting that this paper concentrates almost exclusively ...</text-block>
+          <kp-glue adj-ratio="0.0" amount="8.0"/>
+          <text-block flex-id="4201901" height="13.200001" width="127.324">com.tamirhassan.publisher.model.PAPhysTextBlock: 2 KEY  TECH  NOLO  GIES </text-block>
+          <kp-glue adj-ratio="0.0" amount="3.0"/>
+          <text-block flex-id="6972949" height="13.200001" width="179.255">com.tamirhassan.publisher.model.PAPhysTextBlock: 2.1 Stan  dard  ized  lay  out  prim  i  tives </text-block>
+          <kp-glue adj-ratio="0.0" amount="3.0"/>
+          <text-block flex-id="944486" height="85.44" width="241.0">com.tamirhassan.publisher.model.PAPhysTextBlock: There are two main ways that layouts are described in WYSIWYG ...</text-block>
+          <text-block flex-id="4543052" height="64.08" width="241.0">com.tamirhassan.publisher.model.PAPhysTextBlock:  In desktop publishing software, text is usually placed into ...</text-block>
+        </phys-col>
+      </horiz-seq>
+    </phys-col>
+  </page>
+  <page bottom-margin="82.0" height="792.0" left-margin="54.0" right-margin="54.0" top-margin="82.0" width="612.0">
+    <abs-pos x1="54.0" y2="740.0">
+      <text-block height="10.8" width="218.24954">com.tamirhassan.publisher.model.PAPhysTextBlock: Towards a Universally Editable Portable Document Format </text-block>
+    </abs-pos>
+    <abs-pos x1="349.81226" y2="740.0">
+      <text-block height="10.8" width="196.18776">com.tamirhassan.publisher.model.PAPhysTextBlock: DocEng ’18, August 28–31, 2018, Halifax, NS, Canada </text-block>
+    </abs-pos>
+    <phys-col flex-id="684228" height="628.0" width="504.0">
+      <horiz-seq flex-id="5945455" height="625.72003" width="0.0">
+        <phys-col flex-id="5945455" height="628.0" width="241.0">
+          <text-block flex-id="2030181" height="64.08" width="241.0">com.tamirhassan.publisher.model.PAPhysTextBlock:  The current proof-of-concept enables the author to choose to ...</text-block>
+          <kp-glue adj-ratio="0.0" amount="8.0"/>
+          <text-block flex-id="6206195" height="13.200001" width="173.7">com.tamirhassan.publisher.model.PAPhysTextBlock: 2.2 Two-  step  lay  out  opti  miza  tion </text-block>
+          <kp-glue adj-ratio="0.0" amount="3.0"/>
+          <text-block flex-id="2094137" height="117.48" width="241.0">com.tamirhassan.publisher.model.PAPhysTextBlock: Non-WYSIWYG publishing systems, such as LaTeX, have remained ...</text-block>
+          <text-block flex-id="14168410" height="85.44" width="241.0">com.tamirhassan.publisher.model.PAPhysTextBlock:  This makes true WYSIWYG editing very difficult, not only due ...</text-block>
+          <text-block flex-id="8190972" height="149.51999" width="241.0">com.tamirhassan.publisher.model.PAPhysTextBlock:  We propose a two-step layout optimization strategy to make our ...</text-block>
+          <text-block flex-id="5165205" height="96.12" width="241.0">com.tamirhassan.publisher.model.PAPhysTextBlock:  As this recomputation is completely separate from the inter- ...</text-block>
+          <text-block flex-id="1902368" height="53.4" width="241.0">com.tamirhassan.publisher.model.PAPhysTextBlock:  Given that the underlying source of the document is still text, it ...</text-block>
+          <kp-glue adj-ratio="0.0" amount="8.0"/>
+        </phys-col>
+        <kp-glue adj-ratio="0.0" amount="22.0"/>
+        <phys-col flex-id="5945455" height="628.0" width="241.0">
+          <text-block flex-id="942003" height="13.200001" width="154.945">com.tamirhassan.publisher.model.PAPhysTextBlock: 2.3 Robust  micro-  typog  ra  phy </text-block>
+          <kp-glue adj-ratio="0.0" amount="3.0"/>
+          <text-block flex-id="7564508" height="106.8" width="241.0">com.tamirhassan.publisher.model.PAPhysTextBlock: Text typesetting is variable by nature, and the precise placement ...</text-block>
+          <text-block flex-id="14500777" height="96.12" width="240.99998">com.tamirhassan.publisher.model.PAPhysTextBlock:  In order to maintain the robustness of PDF, we need to continue ...</text-block>
+          <text-block flex-id="1221012" height="106.8" width="241.0">com.tamirhassan.publisher.model.PAPhysTextBlock:  Of course, for an editable document, it is virtually a prereq- ...</text-block>
+          <kp-glue adj-ratio="0.0" amount="8.0"/>
+          <text-block flex-id="15919373" height="13.200001" width="233.12201">com.tamirhassan.publisher.model.PAPhysTextBlock: 3 EXPER  I  MENTS  AND  PROOF  OF  CON  CEPT </text-block>
+          <kp-glue adj-ratio="0.0" amount="3.0"/>
+          <text-block flex-id="6526431" height="42.72" width="241.0">com.tamirhassan.publisher.model.PAPhysTextBlock: We have developed an open-source typesetting tool, Pint, to test ...</text-block>
+          <kp-glue adj-ratio="0.0" amount="6.0"/>
+          <tabular flex-id="3254745" height="53.4" width="221.81903"/>
+          <kp-glue adj-ratio="0.0" amount="6.0"/>
+          <text-block flex-id="2631967" height="42.72" width="241.0">com.tamirhassan.publisher.model.PAPhysTextBlock: Pint is written in Java and uses the PDFBox library for PDF ...</text-block>
+          <text-block flex-id="13038531" height="74.76" width="241.0">com.tamirhassan.publisher.model.PAPhysTextBlock:  A document can be authored by creating three XML files: the ...</text-block>
+          <text-block flex-id="9157049" height="53.4" width="241.0">com.tamirhassan.publisher.model.PAPhysTextBlock:  For the purpose of our proof-of-concept, edits to the XML files ...</text-block>
+        </phys-col>
+      </horiz-seq>
+    </phys-col>
+  </page>
+  <page bottom-margin="82.0" height="792.0" left-margin="54.0" right-margin="54.0" top-margin="82.0" width="612.0">
+    <abs-pos x1="54.0" y2="740.0">
+      <text-block height="10.8" width="196.18776">com.tamirhassan.publisher.model.PAPhysTextBlock: DocEng ’18, August 28–31, 2018, Halifax, NS, Canada </text-block>
+    </abs-pos>
+    <abs-pos x1="494.5857" y2="740.0">
+      <text-block height="10.8" width="51.414303">com.tamirhassan.publisher.model.PAPhysTextBlock: Tamir Hassan </text-block>
+    </abs-pos>
+    <phys-col flex-id="684228" height="628.0" width="504.0">
+      <horiz-seq flex-id="5945455" height="629.68005" width="0.0">
+        <phys-col height="0.0" width="241.0">
+          <phys-col flex-id="8729798" height="123.4" width="240.0">
+            <graphic height="75.0" width="240.0"/>
+            <text-block height="32.4" width="240.0">com.tamirhassan.publisher.model.PAPhysTextBlock: Figure 1: After adding text, the figure's placement no longer ...</text-block>
+            <kp-glue adj-ratio="0.0" amount="16.0"/>
+          </phys-col>
+          <phys-col flex-id="5945455" height="490.6" width="241.0">
+            <text-block height="85.44" width="241.0">com.tamirhassan.publisher.model.PAPhysTextBlock: manipulation). After each modification, the pint update command ...</text-block>
+            <text-block flex-id="1458151" height="64.08" width="241.0">com.tamirhassan.publisher.model.PAPhysTextBlock:  These XML files enable offline, low-bandwidth editing by any ...</text-block>
+            <text-block flex-id="11066203" height="74.76" width="241.0">com.tamirhassan.publisher.model.PAPhysTextBlock:  The camera-ready version of this paper was formatted with Pint. ...</text-block>
+            <kp-glue adj-ratio="0.0" amount="6.0"/>
+            <kp-glue adj-ratio="0.0" amount="8.0"/>
+            <text-block flex-id="2678269" height="13.200001" width="82.422">com.tamirhassan.publisher.model.PAPhysTextBlock: 4 DIS  CUS  SION </text-block>
+            <kp-glue adj-ratio="0.0" amount="3.0"/>
+            <text-block flex-id="14505960" height="138.84" width="241.0">com.tamirhassan.publisher.model.PAPhysTextBlock: PDF has always been very similar to a vector format, and it has ...</text-block>
+            <kp-glue adj-ratio="0.0" amount="8.0"/>
+            <text-block flex-id="7296624" height="13.200001" width="137.73">com.tamirhassan.publisher.model.PAPhysTextBlock: 4.1 Oth  er  types  of  con  tent </text-block>
+            <kp-glue adj-ratio="0.0" amount="3.0"/>
+            <text-block flex-id="8537239" height="74.76" width="241.0">com.tamirhassan.publisher.model.PAPhysTextBlock: Print-oriented documents are not limited to simply drawings, ...</text-block>
+          </phys-col>
+          <kp-glue adj-ratio="0.0" amount="14.0"/>
+        </phys-col>
+        <kp-glue adj-ratio="0.0" amount="22.0"/>
+        <phys-col flex-id="5945455" height="628.0" width="241.0">
+          <text-block flex-id="3900332" height="64.08" width="241.0">com.tamirhassan.publisher.model.PAPhysTextBlock:  It is feasible to extend the logical markup required for editability ...</text-block>
+          <kp-glue adj-ratio="0.0" amount="8.0"/>
+          <text-block flex-id="7778693" height="13.200001" width="128.72101">com.tamirhassan.publisher.model.PAPhysTextBlock: 4.2 Font  licens  ing  issues </text-block>
+          <kp-glue adj-ratio="0.0" amount="3.0"/>
+          <text-block flex-id="13204023" height="85.44" width="241.0">com.tamirhassan.publisher.model.PAPhysTextBlock: Fonts, or at least their digital implementations, have been tradition- ...</text-block>
+          <text-block flex-id="14608211" height="74.76" width="240.99998">com.tamirhassan.publisher.model.PAPhysTextBlock:  Subset fonts, however, make editing much more difficult as the ...</text-block>
+          <text-block flex-id="15184214" height="106.8" width="241.0">com.tamirhassan.publisher.model.PAPhysTextBlock:  In order to ensure proper editability of text whose font has been ...</text-block>
+          <text-block flex-id="6874703" height="85.44" width="241.0">com.tamirhassan.publisher.model.PAPhysTextBlock:  Thanks to initiatives such as Google Fonts, there are now a ...</text-block>
+          <kp-glue adj-ratio="0.0" amount="8.0"/>
+          <text-block flex-id="11609051" height="13.200001" width="118.062">com.tamirhassan.publisher.model.PAPhysTextBlock: 5 THE  ROAD  AHEAD </text-block>
+          <kp-glue adj-ratio="0.0" amount="3.0"/>
+          <text-block flex-id="5347794" height="117.48" width="241.0">com.tamirhassan.publisher.model.PAPhysTextBlock: The introduction of an editable, portable document format has ...</text-block>
+          <kp-glue adj-ratio="0.0" amount="8.0"/>
+          <text-block flex-id="5435593" height="13.200001" width="69.718">com.tamirhassan.publisher.model.PAPhysTextBlock: REF  ER  ENCES </text-block>
+          <kp-glue adj-ratio="0.0" amount="3.0"/>
+        </phys-col>
+      </horiz-seq>
+    </phys-col>
+  </page>
+  <page bottom-margin="82.0" height="792.0" left-margin="54.0" right-margin="54.0" top-margin="82.0" width="612.0">
+    <abs-pos x1="54.0" y2="740.0">
+      <text-block height="10.8" width="218.24954">com.tamirhassan.publisher.model.PAPhysTextBlock: Towards a Universally Editable Portable Document Format </text-block>
+    </abs-pos>
+    <abs-pos x1="349.81226" y2="740.0">
+      <text-block height="10.8" width="196.18776">com.tamirhassan.publisher.model.PAPhysTextBlock: DocEng ’18, August 28–31, 2018, Halifax, NS, Canada </text-block>
+    </abs-pos>
+    <phys-col flex-id="684228" height="66.0" width="504.0">
+      <horiz-seq flex-id="5945455" height="66.0" width="0.0">
+        <phys-col flex-id="5945455" height="66.0" width="241.0">
+          <tabular flex-id="16210982" height="67.200005" width="245.0"/>
+        </phys-col>
+      </horiz-seq>
+    </phys-col>
+  </page>
+</phys-doc>

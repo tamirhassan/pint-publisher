@@ -1,0 +1,5 @@
+bin/
+src/org/editablepdf/jats/
+src/org/apache/pdfbox/
+src/org/apache/fontbox/
+.settings
